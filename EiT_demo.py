@@ -3,6 +3,7 @@ import rtde_receive
 from camera import RobotSafetyMonitor
 import cv2
 import numpy as np
+import math
 
 
 rtde_c = rtde_control.RTDEControlInterface("192.168.1.100")
@@ -36,11 +37,53 @@ finally:
     monitor.pipeline.stop()
     cv2.destroyAllWindows()
 
-# #Set TCP frame
-# rtde_c.setTcp([0, 0, 0, 0, 0, 0])
 
-# #Home position
-# rtde_c.moveJ([0.0, -1.5708, 0.0, -1.5708, 0.0, 0.0], 1.0, 0.3)
+# Set TCP frame
+rtde_c.setTcp([0, 0, 0, 0, 0, 0])
+
+# Home position
+rtde_c.moveJ([0.0, -1.5708, 0.0, -1.5708, 0.0, 0.0], 1.0, 0.3) # Still needs to be specified
+
+# Above pick up 1. component
+joint_pos_1_ab_deg = np.array([68.05, -66.47, 87.16, 250.25, 270.29, 271.17])
+# TCP XYZ [-114.71, -638.17, -103.83] RX RY RZ [1.732, -2.637, -0.015]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_1_ab_deg], 1.0, 0.3) 
+
+# Pick up 1. component
+joint_pos_1_deg = np.array([68.53, -64.05, 90.21, 244.84, 270.31, 271.68])
+# TCP XYZ [-109.74, -640.26, -145.87] RX RY RZ [1.732, -2.637, -0.017]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_1_deg], 1.0, 0.3)
+
+# Above pick up 2. component
+joint_pos_2_ab_deg = np.array([69.07, -74.42, 98.29, 247.50, 270.32, 272.54])
+# TCP XYZ [-80.28, -579.63, -105.11] RX RY RZ [1.727, -2.647, -0.023]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_2_ab_deg], 1.0, 0.3)
+
+# Pick up 2. component
+joint_pos_2_deg = np.array([69.03, -71.71, 102.11, 240.99, 270.32, 272.53])
+# TCP XYZ [-80.27, -578.46, -150.71] RX RY RZ [1.727, -2.647, -0.023]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_2_deg], 1.0, 0.3)
+
+# Above pick up 3. component
+joint_pos_3_ab_deg = np.array([69.50, -83.71, 111.47, 242.33, 270.32, 272.55])
+# TCP XYZ [-49.23, -508.43, -113.75] RX RY RZ [1.727, -2.625, -0.002]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_3_ab_deg], 1.0, 0.3)
+
+# Pick up 3. component
+joint_pos_3_deg = np.array([69.50, -80.99, 114.47, 236.61, 270.32, 272.57])
+# TCP XYZ [-49.24, -508.42, -150.15] RX RY RZ [1.727, -2.625, -0.002]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_3_deg], 1.0, 0.3)
+
+# Above pick up 4. component
+joint_pos_4_ab_deg = np.array([69.61, -92.89, 119.87, 243.11, 270.32, 272.71])
+# TCP XYZ [-25.55, -447.09, -107.00] RX RY RZ [1.726, -2.626, -0.002]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_4_ab_deg], 1.0, 0.3)
+
+# Pick up 4. component
+joint_pos_4_deg = np.array([69.78, -88.92, 123.92, 235.09, 270.32, 272.93])
+# TCP XYZ [-24.51, -448.18, -153.59] RX RY RZ [1.726, -2.626, -0.002]
+rtde_c.moveJ([math.radians(deg) for deg in joint_pos_4_deg], 1.0, 0.3)
+
 
 # #Move to first pose
 # rtde_c.moveJ([0.0, -1.5708, -1.5708, -1.5708, 1.5708, 0.0], 1.0, 0.3)
