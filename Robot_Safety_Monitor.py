@@ -4,6 +4,7 @@ import mediapipe as mp
 import numpy as np
 import math
 
+from abfilter import ABFilter
 
 class RobotSafetyMonitor:
     def __init__(self, safety_distance=0.5, color_res=(640, 480), depth_res=(640, 480), fps=30):
@@ -29,6 +30,8 @@ class RobotSafetyMonitor:
         # Set up OpenCV window
         cv2.namedWindow('Pose Detection', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('Pose Detection', 1920, 1080)
+
+        self.filter = ABFilter(alpha=0.1,beta=0.05,dt=1/30)
 
 
     def set_robot_tcp(self, tcp_pose):
@@ -60,7 +63,7 @@ class RobotSafetyMonitor:
         )
 
 
-    def monitor_safety(self):
+    def monitor_safety(self, patch_coords_list):
         """Runs the main loop for safety monitoring."""
         # Get frames from the RealSense camera
         frames = self.pipeline.wait_for_frames()
@@ -80,6 +83,9 @@ class RobotSafetyMonitor:
         rgb_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
         results = self.pose.process(rgb_image)
 
+        too_close = False
+        distance = 0
+
         if results.pose_landmarks:
             # Draw the landmarks on the image
             self.mp_drawing.draw_landmarks(
@@ -94,13 +100,20 @@ class RobotSafetyMonitor:
             depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
             self.draw_tcp_on_image(self.tcp_coords, depth_intrin, color_image)
 
-            too_close = False
             height, width, _ = color_image.shape
 
             # Check distance for each human landmark
             for id, landmark in enumerate(results.pose_landmarks.landmark):
-                cx = int(landmark.x * width)
-                cy = int(landmark.y * height)
+                if(id >=24):#ignore legs
+                    break
+                # cx = int(landmark.x * width)
+                # cy = int(landmark.y * height)
+
+                # cx,cy = self.filter.filter((cx,cy))
+
+                cx,cy = self.filter.filter((landmark.x, landmark.y))
+                cx = int(cx * width)
+                cy = int(cy * height)
 
                 # Ensure the coordinates are within the bounds of the image
                 if 0 <= cx < width and 0 <= cy < height:
@@ -123,12 +136,25 @@ class RobotSafetyMonitor:
             if too_close:
                 print("Robot too close to human! Slowing down...")
 
+        # Colors for each patch (you can customize the colors for each rectangle)
+        colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0)]  # Green, Blue, Red, Yellow
+
+        # Draw rectangles for each patch
+        for i, patch_coords in enumerate(patch_coords_list):
+            x, y, w, h = patch_coords
+            cv2.rectangle(color_image, (x, y), (x + w, y + h), colors[i], 2)
+
+
         # Display the image
         cv2.imshow('Pose Detection', color_image)
 
         # Exit if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            return 1
+            terminate = True
+        else:
+            terminate = False
+        
+        return too_close, distance, cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY), terminate
 
 
 if __name__ == "__main__":
