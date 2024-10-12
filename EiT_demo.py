@@ -1,41 +1,38 @@
 import rtde_control
 import rtde_receive
 import rtde_io
-from Robot_Safety_Monitor import RobotSafetyMonitor
+from utils.safety_monitor import RobotSafetyMonitor
 import cv2
 import numpy as np
 import math
 import os
 
-from detect_object_in_fixture import CheckFixtures
-from interpolate import interpolate_joint_positions
+from utils.fixture_checker import CheckFixtures
+from utils.interpolate import interpolate_joint_positions
 
+# Constants
+ROBOT_IP = "192.168.1.100"
+HOME_POS_DEG = np.array([2.43, -130.48, 95.77, 304.95, 269.33, 261.24])
 
+# Initialize Robot Interfaces
+rtde_c = rtde_control.RTDEControlInterface(ROBOT_IP)
+rtde_r = rtde_receive.RTDEReceiveInterface(ROBOT_IP)
+rtde_input_output = rtde_io.RTDEIOInterface(ROBOT_IP)
 
-rtde_c = rtde_control.RTDEControlInterface("192.168.1.100")
-rtde_r = rtde_receive.RTDEReceiveInterface("192.168.1.100")
-rtde_input_output = rtde_io.RTDEIOInterface("192.168.1.100")
-
-# Get the current script's directory
+# Load Reference Image
 current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Construct the full path to the image
 image_path = os.path.join(current_dir, 'images', 'reference2.png')
-
-# Read the image in grayscale
 reference_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
-patch_coords_1 = (166, 204, 20, 15) # Component 1
-patch_coords_2 = (148, 222, 20, 15) # Component 2
-patch_coords_3 = (132, 242, 20, 15) # Component 3
-patch_coords_4 = (112, 262, 20, 15) # Component 4
-
-# List of all patch coordinates
-patch_coords_list = [patch_coords_1, patch_coords_2, patch_coords_3, patch_coords_4]
-
+patch_coords_list = [
+    (166, 204, 20, 15), 
+    (148, 222, 20, 15), 
+    (132, 242, 20, 15), 
+    (112, 262, 20, 15)]
 check_fixtures = CheckFixtures(patch_coords_list)
 
+# Initialize Safety Monitor
 monitor = RobotSafetyMonitor(safety_distance=0.5)
 
 small_state = 0

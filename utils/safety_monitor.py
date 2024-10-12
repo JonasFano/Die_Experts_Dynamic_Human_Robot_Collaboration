@@ -4,7 +4,7 @@ import mediapipe as mp
 import numpy as np
 import math
 
-from abfilter import ABFilter
+from utils.abfilter import ABFilter
 
 class RobotSafetyMonitor:
     def __init__(self, safety_distance=0.5, color_res=(640, 480), depth_res=(640, 480), fps=30):
@@ -39,6 +39,10 @@ class RobotSafetyMonitor:
         vector_camera_to_robot = np.array([0.44857067, 0.27121427, 0.38783426]) # np.array([0.44857067, 0.27121427, 0.38783426]) 
         self.tcp_coords = vector_camera_to_robot + tcp_pose[:3]
 
+
+    def stop_monitoring(self):
+        """Stop the pipeline."""
+        self.pipeline.stop()
 
 
     @staticmethod

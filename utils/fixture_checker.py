@@ -2,8 +2,9 @@ import cv2
 import numpy as np
 
 class CheckFixtures:
-    def __init__(self, patch_coords_list):
+    def __init__(self, patch_coords_list, image_path):
         self.patch_coords_list = patch_coords_list
+        self.reference_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     @staticmethod
     def compare_image_patch(reference_image, current_image, patch_coords, threshold=50):
@@ -81,12 +82,11 @@ class CheckFixtures:
         return False
 
 
-    def check_all_patches(self, reference_image, current_image):
+    def check_all_patches(self, current_image):
         """
         Checks if an object has been detected in any of the given patches.
 
         Parameters:
-        - reference_image: Image of the empty fixture (numpy array).
         - current_image: Image with/without the object (numpy array).
 
         Returns:
@@ -98,7 +98,7 @@ class CheckFixtures:
         # Iterate over each patch in the list of patch coordinates
         for patch_coords in self.patch_coords_list:
             # Call the function to check if the object is in the patch
-            result = self.check_for_object_in_patch(reference_image, current_image, patch_coords)
+            result = self.check_for_object_in_patch(self.reference_image, current_image, patch_coords)
             
             # Convert the result to 1 (full) or 0 (empty)
             patch_status = 1 if result else 0
@@ -175,7 +175,9 @@ if __name__ == "__main__":
     # List of all patch coordinates
     patch_coords_list = [patch_coords_1, patch_coords_2, patch_coords_3, patch_coords_4]
 
-    check_fixtures = CheckFixtures(patch_coords_list)
+    ref_img_path = 'images/reference.png'
+    ref_img_path2 = 'images/reference2.png'
+    check_fixtures = CheckFixtures(patch_coords_list, ref_img_path2)
 
 
     # CheckFixtures.visualize(current_image, patch_coords_3)
@@ -183,7 +185,7 @@ if __name__ == "__main__":
     check_fixtures.visualize_all_patches(reference_image2)
 
     # Check if objects are detected in all patches
-    results = check_fixtures.check_all_patches(reference_image, current_image)
+    results = check_fixtures.check_all_patches(current_image)
     
     for patch, detected in results.items():
         if detected:
@@ -191,43 +193,3 @@ if __name__ == "__main__":
         else:
             print(f"No object detected in {patch}.")
     
-
-
-    # Check if objects are detected in all patches
-    results = check_fixtures.check_all_patches(reference_image, image_without_comp_1)
-    print("New image")
-    for patch, detected in results.items():
-        if detected:
-            print(f"Object detected in {patch}.")
-        else:
-            print(f"No object detected in {patch}.")
-
-
-    # Check if objects are detected in all patches
-    results = check_fixtures.check_all_patches(reference_image, image_without_comp_2)
-    print("New image")
-    for patch, detected in results.items():
-        if detected:
-            print(f"Object detected in {patch}.")
-        else:
-            print(f"No object detected in {patch}.")
-
-    
-    # Check if objects are detected in all patches
-    results = check_fixtures.check_all_patches(reference_image, image_without_comp_3)
-    print("New image")
-    for patch, detected in results.items():
-        if detected:
-            print(f"Object detected in {patch}.")
-        else:
-            print(f"No object detected in {patch}.")
-
-
-    # Check if objects are detected in all patches
-    results = check_fixtures.check_all_patches(reference_image, image_without_comp_4)
-    print("New image")
-    for patch, detected in results.items():
-        if detected:
-            print(f"Object detected in {patch}.")
-        else:
-            print(f"No object detected in {patch}.")
