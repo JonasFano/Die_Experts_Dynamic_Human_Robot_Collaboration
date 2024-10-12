@@ -19,14 +19,14 @@ class StateMachine:
 
     def process_state_machine(self):
         """Process the state machine to control robot behavior."""
-        while True:
+        while not terminate:
             # Monitor safety
             tcp_pose = self.robot_controller.get_tcp_pose()
             self.safety_monitor.set_robot_tcp(tcp_pose)
-            safety_warning, distance, current_frame, terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
+            safety_warning, distance, current_frame, current_depth_frame, terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
 
             # Check fixtures
-            fixture_results = self.fixture_checker.check_all_patches(current_frame)
+            fixture_results = self.fixture_checker.check_all_patches(current_frame, current_depth_frame)
 
             # Determine velocity
             robot_velocity = self.change_robot_velocity(safety_warning, fixture_results, distance)

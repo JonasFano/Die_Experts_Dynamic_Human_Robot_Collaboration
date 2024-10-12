@@ -158,7 +158,7 @@ class RobotSafetyMonitor:
         else:
             terminate = False
         
-        return too_close, distance, cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY), terminate
+        return too_close, distance, cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY), depth_image, terminate
 
 
 if __name__ == "__main__":

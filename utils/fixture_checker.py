@@ -2,9 +2,13 @@ import cv2
 import numpy as np
 
 class CheckFixtures:
-    def __init__(self, patch_coords_list, image_path):
+    def __init__(self, patch_coords_list, image_path, intensity_threshold=50, percentage_threshold=35, min_dist=0.8, max_dist=1.5):
         self.patch_coords_list = patch_coords_list
         self.reference_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        self.intensity_threshold = intensity_threshold # Pixel intensity difference threshold to detect significant changes.
+        self.percentage_threshold = percentage_threshold # The minimum percentage of difference required to consider an object detected.
+        self.min_dist = min_dist  # Minimum valid distance for object detection
+        self.max_dist = max_dist  # Maximum valid distance for object detection
 
     @staticmethod
     def compare_image_patch(reference_image, current_image, patch_coords, threshold=50):
@@ -45,44 +49,43 @@ class CheckFixtures:
 
 
     @staticmethod
-    def object_detected(diff_percentage, detection_threshold=35.0):
+    def object_detected(diff_percentage, percentage_threshold=35.0):
         """
         Determines if an object has been detected based on the percentage of different pixels.
         
         Parameters:
         - diff_percentage: Percentage of pixels that differ between reference and current patch.
-        - detection_threshold: The minimum percentage of difference required to consider an object detected.
+        - percentage_threshold: The minimum percentage of difference required to consider an object detected.
         
         Returns:
         - True if object detected, False otherwise.
         """
         # print(diff_percentage)
-        return diff_percentage > detection_threshold
+        return diff_percentage > percentage_threshold
 
 
-    @staticmethod
-    def check_for_object_in_patch(reference_image, current_image, patch_coords):
+    def check_for_object_intensity(self, current_image, patch_coords):
         """
         Checks whether an object has been placed in the fixture by comparing a specific patch of the images.
         
         Parameters:
-        - reference_image: Image of the empty fixture (numpy array).
         - current_image: Image with/without the object (numpy array).
         - patch_coords: A tuple of the form (x, y, width, height) defining the patch area to compare.
+
         
         Returns:
         - True if an object is detected, False otherwise.
         """
         # Perform patch comparison
-        diff_percentage, _ = CheckFixtures.compare_image_patch(reference_image, current_image, patch_coords)
+        diff_percentage, _ = self.compare_image_patch(self.reference_image, current_image, patch_coords, self.intensity_threshold)
         
         # Determine if the object is detected based on the difference percentage
-        if CheckFixtures.object_detected(diff_percentage):
+        if CheckFixtures.object_detected(diff_percentage, self.percentage_threshold):
             return True
         return False
 
 
-    def check_all_patches(self, current_image):
+    def check_all_patches_only_intensity(self, current_image):
         """
         Checks if an object has been detected in any of the given patches.
 
@@ -98,7 +101,7 @@ class CheckFixtures:
         # Iterate over each patch in the list of patch coordinates
         for patch_coords in self.patch_coords_list:
             # Call the function to check if the object is in the patch
-            result = self.check_for_object_in_patch(self.reference_image, current_image, patch_coords)
+            result = self.check_for_object_intensity(self.reference_image, current_image, patch_coords, self.intensity_threshold, self.percentage_threshold)
             
             # Convert the result to 1 (full) or 0 (empty)
             patch_status = 1 if result else 0
@@ -108,7 +111,69 @@ class CheckFixtures:
         
         # Convert the results list to a numpy array and return
         return np.array(results)
+    
 
+
+    def check_for_object_intensity_and_depth(self, current_image, current_depth_image, patch_coords):
+        """
+        Checks whether an object has been placed in the fixture by comparing a specific patch of the images,
+        and verifying that the distance in the depth image is within the valid range.
+        
+        Parameters:
+        - current_image: Image with/without the object (numpy array).
+        - current_depth_image: Depth image corresponding to the current_image (numpy array).
+        - patch_coords: A tuple of the form (x, y, width, height) defining the patch area to compare.
+        
+        Returns:
+        - True if an object is detected and within the depth range, False otherwise.
+        """
+        # Perform patch comparison
+        diff_percentage, _ = self.compare_image_patch(self.reference_image, current_image, patch_coords, self.intensity_threshold)
+        
+        # Check if the object is detected based on the difference percentage
+        if self.object_detected(diff_percentage, self.percentage_threshold):
+            # Check the depth in the patch
+            x, y, w, h = patch_coords
+            depth_patch = current_depth_image[y:y+h, x:x+w]
+
+            # Calculate the average depth in the patch
+            avg_depth = np.mean(depth_patch)
+
+            # Check if the depth is within the specified range
+            if self.min_dist < avg_depth < self.max_dist:
+                return True  # Object detected and within valid depth range
+        
+        return False  # Either object not detected or depth not in range
+    
+
+    def check_all_patches(self, current_image, current_depth_image):
+        """
+        Checks if an object has been detected in any of the given patches.
+        Additionally uses the depth image to differentiate between detecting the components or the robot.
+
+        Parameters:
+        - current_image: Image with/without the object (numpy array).
+        - current_depth_image: Depth image with/without the object (numpy array).
+
+        Returns:
+        - A numpy array where each element is 0 (empty) or 1 (full) for the corresponding patch.
+        """
+        # Create an empty list to store the results
+        results = []
+
+        # Iterate over each patch in the list of patch coordinates
+        for patch_coords in self.patch_coords_list:
+            # Call the function to check if the object is in the patch
+            result = self.check_for_object_intensity_and_depth(current_image, current_depth_image, patch_coords)
+            
+            # Convert the result to 1 (full) or 0 (empty)
+            patch_status = 1 if result else 0
+            
+            # Append the result to the list
+            results.append(patch_status)
+        
+        # Convert the results list to a numpy array and return
+        return np.array(results)
 
 
     @staticmethod
