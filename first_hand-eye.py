@@ -153,11 +153,11 @@ try:
 
                 # Write the robot pose to file
                 with open(robot_filename, "a") as f_robot:
-                    f_robot.write(f"{robot_pose}\n")
+                    f_robot.write(f"{np.array(robot_pose)}\n")
 
                 # Write the ArUco pose to file
                 with open(aruco_filename, "a") as f_aruco:
-                    f_aruco.write(f"{pose}\n")
+                    f_aruco.write(f"{np.array(pose)}\n")
 
                 print("Data saved successfully.")
             else:

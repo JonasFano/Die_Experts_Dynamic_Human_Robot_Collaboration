@@ -49,3 +49,37 @@ if __name__ == "__main__":
     print(R_cam2base)
     print("\nTranslation Vector from Camera to Robot Base:")
     print(t_cam2base)
+
+
+    # Perform hand-eye calibration the other way around to find transformation from robot base to camera
+    R_robot2cam, t_robot2cam = cv2.calibrateHandEye(
+        R_gripper2base=aruco_rot_matrices, t_gripper2base=aruco_translations,  # ArUco as gripper-to-base
+        R_target2cam=robot_rot_matrices, t_target2cam=robot_translations        # Robot as target-to-camera
+    )
+
+    # Display the results
+    print("Rotation Matrix from Robot Base to Camera:")
+    print(R_robot2cam)
+    print("\nTranslation Vector from Robot Base to Camera:")
+    print(t_robot2cam)
+
+
+
+    # TCP_in_robot_base = [-0.6002879710645266, -0.20386477274731887, 0.585448172337992]
+
+    # # Construct the transformation matrix
+    # T_robot2cam = np.eye(4)  # Start with a 4x4 identity matrix
+    # T_robot2cam[:3, :3] = R_robot2cam  # Set the rotation part
+    # T_robot2cam[:3, 3] = t_robot2cam.flatten()  # Set the translation part
+
+    # TCP_in_camera_frame = np.dot(T_robot2cam, np.append(TCP_in_robot_base, 1))
+
+    # # Extract the position of the TCP in the camera frame
+    # tcp_position_in_camera = TCP_in_camera_frame[:3]
+
+    # actual_tcp_in_camera = [-0.14026, -0.13966, 1.05762]
+
+    # # Output the result
+    # print("TCP position in the camera frame (x, y, z):", tcp_position_in_camera)
+    # print("Actual TCP in robot base frame: ", TCP_in_robot_base)
+    # print("Actual TCP in camera frame: ", actual_tcp_in_camera)
