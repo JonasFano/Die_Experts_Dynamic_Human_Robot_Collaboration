@@ -38,12 +38,12 @@ Literature
 
 
 For estabilshing a bluetooth connection to the OnePlus Watch: Type in the terminal:
-bluetoothctl
-power on
-agent on
-default-agent
-scan on
-pair XX:XX:XX:XX:XX:XX # pair 5C:17:CF:8D:12:1B
-trust XX:XX:XX:XX:XX:XX # trust 5C:17:CF:8D:12:1B
-connect XX:XX:XX:XX:XX:XX # connect 5C:17:CF:8D:12:1B
-exit
+- bluetoothctl
+- power on
+- agent on
+- default-agent
+- scan on
+- pair XX:XX:XX:XX:XX:XX # pair 5C:17:CF:8D:12:1B
+- trust XX:XX:XX:XX:XX:XX # trust 5C:17:CF:8D:12:1B
+- connect XX:XX:XX:XX:XX:XX # connect 5C:17:CF:8D:12:1B
+- exit
