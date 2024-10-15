@@ -8,22 +8,23 @@ class StateMachine:
         self.fixture_checker = fixture_checker
         self.small_state = 0
         self.state = 100
+        self.terminate = False
 
     def change_robot_velocity(self, safety_warning, fixture_results, distance):
         """Adjust robot velocity based on safety warnings and fixture detection."""
         if safety_warning:
             return 0.3 * distance
-        elif np.any(fixture_results == 1) and not safety_warning:
+        elif np.any(fixture_results == 1):
             return 1.0
         return 0.5
 
     def process_state_machine(self):
         """Process the state machine to control robot behavior."""
-        while not terminate:
+        while not self.terminate:
             # Monitor safety
             tcp_pose = self.robot_controller.get_tcp_pose()
             self.safety_monitor.set_robot_tcp(tcp_pose)
-            safety_warning, distance, current_frame, current_depth_frame, terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
+            safety_warning, distance, current_frame, current_depth_frame, self.terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
 
             # Check fixtures
             fixture_results = self.fixture_checker.check_all_patches(current_frame, current_depth_frame)
@@ -34,28 +35,41 @@ class StateMachine:
             # Handle state transitions
             match self.state:
                 case 0:  # State for fixture 1
+                    print("State 1")
                     self._handle_fixture_1(robot_velocity)
 
                 case 1:  # State for fixture 2
+                    print("State 2")
                     self._handle_fixture_2(robot_velocity)
 
                 case 2:  # State for fixture 3
+                    print("State 3")
                     self._handle_fixture_3(robot_velocity)
                 
                 case 3:  # State for fixture 4
+                    print("State 4")
                     self._handle_fixture_4(robot_velocity)
 
                 case 4:  # State for fixture 5
+                    print("State 5")
                     self._handle_fixture_5(robot_velocity)
 
                 case 5:  # State for fixture 6
+                    print("State 6")
                     self._handle_fixture_6(robot_velocity)
 
                 case 6:  # State for moving from fixtures to place position
+                    print("State 7")
                     self._handle_movement_to_place(robot_velocity)
 
+                case 1000: # Camera calibration state for checking fixture detection
+                    self._check_fixtures(fixture_results)
+                    self.fixture_checker.calibrate_depth(current_depth_frame)
+
                 case _:  # Initial state
+                    # print("State default")
                     self._decide_next_state(fixture_results)
+                
 
 
     def _handle_fixtures(self, robot_velocity, joint_pos_1, joint_pos_2, joint_pos_3):
@@ -75,8 +89,6 @@ class StateMachine:
                 if self.robot_controller.close_gripper():
                     self.small_state += 1
             case 3: # Above pick up component when grasped
-                self.robot_controller.open_gripper()
-
                 if self.robot_controller.move_to_position(joint_pos_3, robot_velocity):
                     self.small_state = 0
                     self.state = 6 # Move to place position
@@ -129,60 +141,60 @@ class StateMachine:
         match self.small_state:
             case 0:
                 # Interpolate
-                joint_pos_intermediate = np.array([2.43, -130.48, 95.77, 304.95, 269.33, 261.24])
-                joint_pos_place = np.array([-35.01, -73.70, 84.80, 256.20, 269.29, 261.24])
+                self.joint_pos_intermediate = np.array([2.43, -130.48, 95.77, 304.95, 269.33, 261.24])
+                self.joint_pos_place = np.array([-35.01, -73.70, 84.80, 256.20, 269.29, 261.24])
 
-                from_actual_to_intermediate = interpolate_joint_positions(self.robot_controller.get_actual_joint_positions(), joint_pos_intermediate, num_points=10)
-                from_intermediate_to_place = interpolate_joint_positions(joint_pos_intermediate, joint_pos_place, num_points=10)
-                from_place_to_intermediate = interpolate_joint_positions(joint_pos_place, joint_pos_intermediate, num_points=10)
+                self.from_actual_to_intermediate = interpolate_joint_positions(self.robot_controller.get_actual_joint_positions(), self.joint_pos_intermediate, num_points=10)
+                self.from_intermediate_to_place = interpolate_joint_positions(self.joint_pos_intermediate, self.joint_pos_place, num_points=10)
+                self.from_place_to_intermediate = interpolate_joint_positions(self.joint_pos_place, self.joint_pos_intermediate, num_points=10)
 
                 self.intermediate_index = 0  # Initialize the index for interpolating joint positions
                 self.small_state += 1
             case 1:
                 # From actual to intermediate point
-                if self.intermediate_index < len(from_actual_to_intermediate):
-                    joint_pos = from_actual_to_intermediate[self.intermediate_index]
+                # if self.intermediate_index < len(self.from_actual_to_intermediate):
+                #     joint_pos = self.from_actual_to_intermediate[self.intermediate_index]
                     
-                    if self.robot_controller.move_to_position(joint_pos, robot_velocity):
-                        self.intermediate_index += 1  # Move to the next joint position
-                else:
-                    self.small_state += 1  # Move to the next state once all intermediate points are reached
-                    self.intermediate_index = 0
+                #     if self.robot_controller.move_to_position(joint_pos, robot_velocity):
+                #         self.intermediate_index += 1  # Move to the next joint position
+                # else:
+                #     self.small_state += 1  # Move to the next state once all intermediate points are reached
+                #     self.intermediate_index = 0
 
-                # if self.robot_controller.move_to_position(joint_pos_intermediate, robot_velocity):
-                #     self.small_state += 1
+                if self.robot_controller.move_to_position(self.joint_pos_intermediate, robot_velocity):
+                    self.small_state += 1
             case 2:
                 # From intermediate to place point
-                if self.intermediate_index < len(from_intermediate_to_place):
-                    joint_pos = from_intermediate_to_place[self.intermediate_index]
+                # if self.intermediate_index < len(self.from_intermediate_to_place):
+                #     joint_pos = self.from_intermediate_to_place[self.intermediate_index]
                     
-                    if self.robot_controller.move_to_position(joint_pos, robot_velocity):
-                        self.intermediate_index += 1  # Move to the next joint position
-                else:
-                    self.small_state += 1  # Move to the next state once all intermediate points are reached
-                    self.intermediate_index = 0
+                #     if self.robot_controller.move_to_position(joint_pos, robot_velocity):
+                #         self.intermediate_index += 1  # Move to the next joint position
+                # else:
+                #     self.small_state += 1  # Move to the next state once all intermediate points are reached
+                #     self.intermediate_index = 0
 
-                # if self.robot_controller.move_to_position(joint_pos_place, robot_velocity):
-                #     self.small_state += 1
+                if self.robot_controller.move_to_position(self.joint_pos_place, robot_velocity):
+                    self.small_state += 1
             case 3:
                 # Open gripper
                 if self.robot_controller.open_gripper(): 
                     self.small_state += 1
             case 4:
                 # From place to intermediate point
-                if self.intermediate_index < len(from_place_to_intermediate):
-                    joint_pos = from_place_to_intermediate[self.intermediate_index]
+                # if self.intermediate_index < len(self.from_place_to_intermediate):
+                #     joint_pos = self.from_place_to_intermediate[self.intermediate_index]
                     
-                    if self.robot_controller.move_to_position(joint_pos, robot_velocity):
-                        self.intermediate_index += 1  # Move to the next joint position
-                else:
-                    self.small_state = 0 # Move to the next state once all intermediate points are reached
-                    self.intermediate_index = 0
-                    self.state = 100
-
-                # if self.robot_controller.move_to_position(joint_pos_intermediate, robot_velocity):
-                #     self.small_state = 0
+                #     if self.robot_controller.move_to_position(joint_pos, robot_velocity):
+                #         self.intermediate_index += 1  # Move to the next joint position
+                # else:
+                #     self.small_state = 0 # Move to the next state once all intermediate points are reached
+                #     self.intermediate_index = 0
                 #     self.state = 100
+
+                if self.robot_controller.move_to_position(self.joint_pos_intermediate, robot_velocity):
+                    self.small_state = 0
+                    self.state = 100
 
     def _decide_next_state(self, fixture_results):
         """Decide the next state based on fixture detection results."""
@@ -204,3 +216,19 @@ class StateMachine:
         # elif fixture_results[5]: 
             # print("Moving to fixture 6")
             # self.state = 5
+
+
+    def _check_fixtures(self, fixture_results):
+        """Check fixture detection results."""
+        if fixture_results[0]: 
+            print("Moving to fixture 1")
+        elif fixture_results[1]:
+            print("Moving to fixture 2") 
+        elif fixture_results[2]: 
+            print("Moving to fixture 3")
+        elif fixture_results[3]: 
+            print("Moving to fixture 4")
+        # elif fixture_results[4]: 
+            # print("Moving to fixture 5")
+        # elif fixture_results[5]: 
+            # print("Moving to fixture 6")

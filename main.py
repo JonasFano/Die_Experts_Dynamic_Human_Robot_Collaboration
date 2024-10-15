@@ -13,14 +13,14 @@ def main():
     home_q_deg = np.array([2.43, -130.48, 95.77, 304.95, 269.33, 261.24])
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(current_dir, 'images', 'reference2.png')
+    image_path = os.path.join(current_dir, 'images', 'reference.png')
 
     # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
     patch_coords_list = [
-        (166, 204, 20, 15), 
-        (148, 222, 20, 15), 
-        (132, 242, 20, 15), 
-        (112, 262, 20, 15)
+        (166, 203, 18, 12), # Component 1
+        (152, 223, 18, 12), 
+        (133, 243, 18, 12), 
+        (113, 265, 18, 12) # Component 4
     ]
 
     # Initialize components
