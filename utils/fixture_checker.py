@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 class CheckFixtures:
-    def __init__(self, patch_coords_list, image_path, intensity_threshold=50, percentage_threshold=35, min_dist=0.8, max_dist=1.5):
+    def __init__(self, patch_coords_list, image_path, intensity_threshold=40, percentage_threshold=35, min_dist=1.2, max_dist=1.8):
         self.patch_coords_list = patch_coords_list
         self.reference_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         self.intensity_threshold = intensity_threshold # Pixel intensity difference threshold to detect significant changes.
@@ -11,7 +11,7 @@ class CheckFixtures:
         self.max_dist = max_dist  # Maximum valid distance for object detection
 
     @staticmethod
-    def compare_image_patch(reference_image, current_image, patch_coords, threshold=50):
+    def compare_image_patch(reference_image, current_image, patch_coords, threshold=40):
         """
         Compares a predefined patch of the reference and current images.
         
@@ -19,7 +19,7 @@ class CheckFixtures:
         - reference_image: Image of the empty fixture (numpy array).
         - current_image: Image with/without the object (numpy array).
         - patch_coords: A tuple of the form (x, y, width, height) defining the patch area to compare where x,y is the top left point of the image patch.
-        - threshold: Pixel intensity difference threshold to detect significant changes (default=50).
+        - threshold: Pixel intensity difference threshold to detect significant changes (default=40).
         
         Returns:
         - diff_percentage: The percentage of pixels that differ between the reference and current patch.
@@ -113,6 +113,22 @@ class CheckFixtures:
         return np.array(results)
     
 
+    def check_depth(self, current_depth_image, patch_coords):
+        """
+        Computes the average depth in the patch of the current depth image
+        
+        Parameters:
+        - current_depth_image: Depth image corresponding to the current_image (numpy array).
+        - patch_coords: A tuple of the form (x, y, width, height) defining the patch area to compare.
+        """
+        # Check the depth in the patch
+        x, y, w, h = patch_coords
+        depth_patch = current_depth_image[y:y+h, x:x+w]
+
+        # Calculate the average depth in the patch
+        avg_depth = np.mean(depth_patch) / 1000
+        return avg_depth
+
 
     def check_for_object_intensity_and_depth(self, current_image, current_depth_image, patch_coords):
         """
@@ -129,21 +145,35 @@ class CheckFixtures:
         """
         # Perform patch comparison
         diff_percentage, _ = self.compare_image_patch(self.reference_image, current_image, patch_coords, self.intensity_threshold)
-        
+
         # Check if the object is detected based on the difference percentage
         if self.object_detected(diff_percentage, self.percentage_threshold):
             # Check the depth in the patch
-            x, y, w, h = patch_coords
-            depth_patch = current_depth_image[y:y+h, x:x+w]
-
-            # Calculate the average depth in the patch
-            avg_depth = np.mean(depth_patch)
+            avg_depth = self.check_depth(current_depth_image, patch_coords)
 
             # Check if the depth is within the specified range
             if self.min_dist < avg_depth < self.max_dist:
                 return True  # Object detected and within valid depth range
         
         return False  # Either object not detected or depth not in range
+    
+
+    def calibrate_depth(self, current_depth_image):
+        """
+        Helps calibrating the depth values to successfully detect a component in any of the given patches.
+
+        Parameters:
+        - current_depth_image: Depth image with/without the object (numpy array).
+        """
+        # Create an empty list to store the results
+        results = []
+
+        # Iterate over each patch in the list of patch coordinates with index
+        for patch_idx, patch_coords in enumerate(self.patch_coords_list):
+            # Call the function to check depth
+            avg_depth = self.check_depth(current_depth_image, patch_coords)
+
+            print(f"Patch {patch_idx + 1}: {avg_depth}")
     
 
     def check_all_patches(self, current_image, current_depth_image):
