@@ -18,7 +18,7 @@ def load_robot_poses(filename):
         for line in f:
             line = line.strip().strip('[]')  # Remove brackets and whitespace
             if line:
-                pose = list(map(float, line.split(',')))  # Split by comma
+                pose = list(map(float, line.split()))  # Split by comma
                 poses.append(pose)
     return np.array(poses)
 
@@ -65,21 +65,23 @@ if __name__ == "__main__":
 
 
 
-    # TCP_in_robot_base = [-0.6002879710645266, -0.20386477274731887, 0.585448172337992]
+    # TCP_in_robot_base = [-0.45329, 0.0338, 0.76916]
+    TCP_in_robot_base = [-0.66082, -0.00275,  0.80091]
 
-    # # Construct the transformation matrix
-    # T_robot2cam = np.eye(4)  # Start with a 4x4 identity matrix
-    # T_robot2cam[:3, :3] = R_robot2cam  # Set the rotation part
-    # T_robot2cam[:3, 3] = t_robot2cam.flatten()  # Set the translation part
+    # Construct the transformation matrix
+    T_robot2cam = np.eye(4)  # Start with a 4x4 identity matrix
+    T_robot2cam[:3, :3] = R_robot2cam  # Set the rotation part
+    T_robot2cam[:3, 3] = t_robot2cam.flatten()  # Set the translation part
 
-    # TCP_in_camera_frame = np.dot(T_robot2cam, np.append(TCP_in_robot_base, 1))
+    TCP_in_camera_frame = np.dot(T_robot2cam, np.append(TCP_in_robot_base, 1))
 
-    # # Extract the position of the TCP in the camera frame
-    # tcp_position_in_camera = TCP_in_camera_frame[:3]
+    # Extract the position of the TCP in the camera frame
+    tcp_position_in_camera = TCP_in_camera_frame[:3]
 
-    # actual_tcp_in_camera = [-0.14026, -0.13966, 1.05762]
+    # actual_tcp_in_camera = [-0.2443, -0.04195, 0.74734]
+    actual_tcp_in_camera = [-0.11651, -0.11284,  0.82633]
 
-    # # Output the result
-    # print("TCP position in the camera frame (x, y, z):", tcp_position_in_camera)
-    # print("Actual TCP in robot base frame: ", TCP_in_robot_base)
-    # print("Actual TCP in camera frame: ", actual_tcp_in_camera)
+    # Output the result
+    print("TCP position in the camera frame (x, y, z):", tcp_position_in_camera)
+    print("Actual TCP in robot base frame: ", TCP_in_robot_base)
+    print("Actual TCP in camera frame: ", actual_tcp_in_camera)

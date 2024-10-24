@@ -2,6 +2,7 @@ import rtde_control
 import rtde_receive
 import rtde_io
 import math
+import numpy as np
 
 class RobotController:
     def __init__(self, ip_address):
@@ -28,4 +29,4 @@ class RobotController:
     
     def get_actual_joint_positions(self):
         """Get the actual joint positions of the robot."""
-        return self.rtde_r.getActualQ()
+        return np.degrees(self.rtde_r.getActualQ())

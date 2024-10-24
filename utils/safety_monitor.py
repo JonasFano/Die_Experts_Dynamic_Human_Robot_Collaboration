@@ -1,9 +1,10 @@
 import pyrealsense2 as rs
 import cv2
 import mediapipe as mp
+from scipy.spatial.transform import Rotation as R
 import numpy as np
 import math
-
+import os
 from utils.abfilter import ABFilter
 
 class RobotSafetyMonitor:
@@ -34,11 +35,50 @@ class RobotSafetyMonitor:
         self.filter = ABFilter(alpha=0.1,beta=0.05,dt=1/30)
 
 
+        # Load ArUco (camera frame) and robot (base frame) poses
+        aruco_poses = self.load_poses('pose_data/aruco_poses.txt')
+        robot_poses = self.load_poses('pose_data/robot_poses.txt')
+
+        # Extract translation and rotation vectors
+        aruco_translations = aruco_poses[:, :3]  # ArUco translation in camera frame
+        aruco_rotations = aruco_poses[:, 3:]     # ArUco rotations (Euler angles) in camera frame
+        robot_translations = robot_poses[:, :3]  # TCP translation in robot base frame
+        robot_rotations = robot_poses[:, 3:]     # TCP rotations (Euler angles) in robot base frame
+
+        # Convert Euler angles to rotation matrices
+        aruco_rot_matrices = np.array([R.from_euler('xyz', rot).as_matrix() for rot in aruco_rotations])
+        robot_rot_matrices = np.array([R.from_euler('xyz', rot).as_matrix() for rot in robot_rotations])
+
+
+        # Perform hand-eye calibration the other way around to find transformation from robot base to camera
+        R_robot2cam, t_robot2cam = cv2.calibrateHandEye(
+            R_gripper2base=aruco_rot_matrices, t_gripper2base=aruco_translations,  # ArUco as gripper-to-base
+            R_target2cam=robot_rot_matrices, t_target2cam=robot_translations        # Robot as target-to-camera
+        )
+
+        # Construct the transformation matrix
+        self.T_robot2cam = np.eye(4)  # Start with a 4x4 identity matrix
+        self.T_robot2cam[:3, :3] = R_robot2cam  # Set the rotation part
+        self.T_robot2cam[:3, 3] = t_robot2cam.flatten()  # Set the translation part
+
+
+    @staticmethod
+    def load_poses(relative_path):
+        file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), relative_path)
+        poses = []
+        with open(file_path, 'r') as f:
+            for line in f:
+                line = line.strip().strip('[]')  # Remove brackets and whitespace
+                if line:
+                    pose = list(map(float, line.split()))  # Split on whitespace
+                    poses.append(pose)
+        return np.array(poses)
+
+
     def set_robot_tcp(self, tcp_pose):
         """Sets the input robot TCP coordinates (simulated)."""
-        vector_camera_to_robot = np.array([0.44857067, 0.27121427, 0.38783426]) # np.array([0.44857067, 0.27121427, 0.38783426]) 
-        self.tcp_coords = vector_camera_to_robot + tcp_pose[:3]
-
+        tcp_pose_camera_frame = np.dot(self.T_robot2cam, np.append(tcp_pose[:3], 1))
+        self.tcp_coords = tcp_pose_camera_frame[:3]
 
     def stop_monitoring(self):
         """Stop the pipeline."""
@@ -163,4 +203,15 @@ class RobotSafetyMonitor:
 
 if __name__ == "__main__":
     monitor = RobotSafetyMonitor(safety_distance=0.5)
-    monitor.monitor_safety()
+
+    patch_coords_list = [
+        (166, 203, 18, 12), # Component 1
+        (152, 223, 18, 12), 
+        (133, 243, 18, 12), 
+        (113, 265, 18, 12) # Component 4
+    ]
+
+    monitor.set_robot_tcp([-0.45057, -0.34136,  0.66577, -0.46792,  1.23244,  2.73046])
+
+    while True:
+        monitor.monitor_safety(patch_coords_list)

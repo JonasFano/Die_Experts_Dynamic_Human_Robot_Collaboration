@@ -61,7 +61,7 @@ def aruco_display(corners, ids, rejected, image, img_width, img_height):
 
             cv2.circle(image, (cX, cY), 4, (0, 0, 255), -1)
             
-            marker_size_meters = 0.02  # Marker size
+            marker_size_meters = 0.06  # Marker size
             distance, rvec, tvec = calculate_distance_and_pose(marker_size_meters, img_width, img_height, corners)
 
             tvec = tvec.flatten()

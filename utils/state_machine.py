@@ -152,17 +152,17 @@ class StateMachine:
                 self.small_state += 1
             case 1:
                 # From actual to intermediate point
-                # if self.intermediate_index < len(self.from_actual_to_intermediate):
-                #     joint_pos = self.from_actual_to_intermediate[self.intermediate_index]
+                if self.intermediate_index < len(self.from_actual_to_intermediate):
+                    joint_pos = self.from_actual_to_intermediate[self.intermediate_index]
                     
-                #     if self.robot_controller.move_to_position(joint_pos, robot_velocity):
-                #         self.intermediate_index += 1  # Move to the next joint position
-                # else:
-                #     self.small_state += 1  # Move to the next state once all intermediate points are reached
-                #     self.intermediate_index = 0
+                    if self.robot_controller.move_to_position(joint_pos, robot_velocity):
+                        self.intermediate_index += 1  # Move to the next joint position
+                else:
+                    self.small_state += 1  # Move to the next state once all intermediate points are reached
+                    self.intermediate_index = 0
 
-                if self.robot_controller.move_to_position(self.joint_pos_intermediate, robot_velocity):
-                    self.small_state += 1
+                # if self.robot_controller.move_to_position(self.joint_pos_intermediate, robot_velocity):
+                #     self.small_state += 1
             case 2:
                 # From intermediate to place point
                 # if self.intermediate_index < len(self.from_intermediate_to_place):
