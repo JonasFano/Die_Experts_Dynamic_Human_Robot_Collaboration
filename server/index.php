@@ -4,8 +4,15 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Content-Type: application/json");
+header("X-Robots-Tag: noindex, nofollow", true);
 
-$data_file = './data/data.json';
+$data_file = './data/'.date('Y-m-d').'.json';
+$latest_entries_count = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+
+// Ensure the data file exists
+if (!file_exists($data_file)) {
+    file_put_contents($data_file, json_encode([]));
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Try to handle JSON input first
@@ -44,11 +51,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (file_exists($data_file)) {
-        $data = file_get_contents($data_file);
-        header('Content-Length: ' . strlen($data));
-        echo $data;
+        $file_contents = file_get_contents($data_file);
+        $existing_data = json_decode($file_contents, true);
+
+        if (is_array($existing_data)) {
+            // Get the latest N entries
+            $latest_data = array_slice($existing_data, -$latest_entries_count);
+            echo json_encode($latest_data);
+        } else {
+            echo json_encode([]);
+        }
     } else {
-        echo json_encode(["error" => "No data found."]);
+        echo json_encode([]);
     }
     exit;
 }
