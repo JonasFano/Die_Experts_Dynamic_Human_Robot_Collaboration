@@ -1,61 +1,62 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from graph import live_update_graph  # Assuming this is already provided
+from graph import live_update_graph
+import cv2
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils')))
+from safety_monitor import RobotSafetyMonitor  
+import threading 
+from matplotlib.animation import FuncAnimation
+import time
 
-# Load two sample images (replace these with your actual image paths)
-image1_path = '../images/all_components.png'
+# Initialize the RobotSafetyMonitor class to access the camera
+monitor = RobotSafetyMonitor()
 
-# Helper function to display an image in a given axis with dark mode styling
-def display_image(ax, image_path):
-    img = plt.imread(image_path)
-    ax.imshow(img)
-    ax.axis('off')  # Hide axes for images
-    ax.set_facecolor('#1E1E1E')  # Dark background for image panels
+def update_camera_feed(ax, fig):
+    # Initialize image display on the first frame to avoid clearing in each loop
+    too_close, distance, color_image, depth_image, terminate = monitor.monitor_safety([])
+    im = ax.imshow(color_image)
+    ax.axis('off')
 
-# Function to style the graph axes for dark mode
-def style_ax_for_dark_mode(ax):
-    # Set dark background
-    ax.set_facecolor('#1E1E1E')
+    # Continuous update loop for new frames
+    while plt.fignum_exists(fig.number):  
+        too_close, distance, color_image, depth_image, terminate = monitor.monitor_safety([])
 
-    # Customize the tick labels
-    ax.tick_params(colors='white')  # Set the tick color to white
-    ax.xaxis.label.set_color('white')  # X-axis label
-    ax.yaxis.label.set_color('white')  # Y-axis label
+        # Update only the image data without clearing the axis
+        im.set_data(color_image)
 
-    # Set the grid and label colors
-    ax.spines['bottom'].set_color('white')
-    ax.spines['top'].set_color('white')
-    ax.spines['left'].set_color('white')
-    ax.spines['right'].set_color('white')
+        # Redraw the canvas without delay
+        fig.canvas.draw_idle()
 
-    ax.title.set_color('white')
-    ax.grid(True, color='#2A2A2A')  # Set grid color
+        if terminate:
+            break
 
-# Function to handle the grid layout with dark mode
-def display_layout(image1_path):
-    # Set the figure background to dark
-    fig = plt.figure(figsize=(10, 6), facecolor='#1E1E1E')  # Dark mode background
 
-    # Create GridSpec layout (2x2 grid, graph spanning right two rows)
+def display_layout():
+    # Set up the figure and layout
+    fig = plt.figure(figsize=(12, 6), facecolor='#1E1E1E')
     gs = gridspec.GridSpec(1, 2, width_ratios=[1, 2])
+    gs.update(wspace=0.05)
 
-    # Top-left: Image 1
+    # Left panel: Camera feed axis
     ax1 = fig.add_subplot(gs[0, 0])
-    display_image(ax1, image1_path)
+    ax1.set_facecolor('#1E1E1E')
 
-    # Right column (spans both rows): Embed the graph in this space
-    ax3 = fig.add_subplot(gs[:, 1])
-    ax3.set_title("Live Graph", fontsize=12, color='white')  # Graph title in white
-    style_ax_for_dark_mode(ax3)  # Apply dark mode styling to graph
+    # Right panel: Live graph axis
+    ax3 = fig.add_subplot(gs[0, 1])
+    ax3.set_title("Live Graph", fontsize=12, color='white')
+    ax3.set_facecolor('#1E1E1E')
 
-    plt.tight_layout()
+    # Start the camera feed update in a separate thread
+    video_thread = threading.Thread(target=update_camera_feed, args=(ax1, fig))
+    video_thread.start()
 
-    # Run the live graph update inside the right column
+    # Run the live graph in the main thread
     live_update_graph(ax3)
 
-    # Keep the main UI running
-    plt.show()
+    # Close the video thread once the plot window is closed
+    video_thread.join()
 
 if __name__ == "__main__":
-    # Display the layout with images and live graph embedded in the right column with dark mode
-    display_layout(image1_path)
+    display_layout()
