@@ -136,33 +136,99 @@ class StateMachine:
         joint_pos_3 = np.array([]) # Above pick up 6. component when grasped
         self._handle_fixtures(robot_velocity, joint_pos_1, joint_pos_2, joint_pos_3) 
 
+
+
+    def _handle_fixture_1_pose(self, robot_velocity):
+        """Handle logic for fixture 1."""
+        pose_1 = np.array([-114.71, -638.17, -103.83, 1.732, -2.637, -0.015]) # Above pick up 1. component
+        pose_2 = np.array([-109.74, -640.26, -145.87, 1.732, -2.637, -0.017]) # Pick up 1. component
+        pose_3 = np.array([-114.71, -638.17, -83.83, 1.732, -2.637, -0.015]) # Above pick up 1. component when grasped
+        self._handle_fixtures(robot_velocity, pose_1, pose_2, pose_3)                
+
+    def _handle_fixture_2_pose(self, robot_velocity):
+        """Handle logic for fixture 2."""
+        pose_1 = np.array([-80.28, -579.63, -105.11, 1.727, -2.647, -0.023])  # Above pick up 2. component
+        pose_2 = np.array([-80.27, -578.46, -150.71, 1.727, -2.647, -0.023]) # Pick up 2. component
+        pose_3 = np.array([-80.28, -579.63, -85.11, 1.727, -2.647, -0.023]) # Above pick up 2. component when grasped
+        self._handle_fixtures(robot_velocity, pose_1, pose_2, pose_3) 
+
+    def _handle_fixture_3_pose(self, robot_velocity):
+        """Handle logic for fixture 3."""
+        pose_1 = np.array([-49.23, -508.43, -113.75, 1.727, -2.625, -0.002])  # Above pick up 3. component
+        pose_2 = np.array([-49.24, -508.42, -150.15, 1.727, -2.625, -0.002]) # Pick up 3. component
+        pose_3 = np.array([-49.23, -508.43, -83.75, 1.727, -2.625, -0.002]) # Above pick up 3. component when grasped
+        self._handle_fixtures(robot_velocity, pose_1, pose_2, pose_3) 
+
+    def _handle_fixture_4_pose(self, robot_velocity):
+        """Handle logic for fixture 4."""
+        pose_1 = np.array([-25.55, -447.09, -107.00, 1.726, -2.626, -0.002])  # Above pick up 4. component
+        pose_2 = np.array([-24.51, -448.18, -153.59, 1.726, -2.626, -0.002]) # Pick up 4. component
+        pose_3 = np.array([-25.55, -447.09, -87.00, 1.726, -2.626, -0.002]) # Above pick up 4. component when grasped
+        self._handle_fixtures(robot_velocity, pose_1, pose_2, pose_3) 
+
+    def _handle_fixture_5(self, robot_velocity):
+        """Handle logic for fixture 5."""
+        pose_1 = np.array([])  # Above pick up 5. component
+        pose_2 = np.array([]) # Pick up 5. component
+        pose_3 = np.array([]) # Above pick up 5. component when grasped
+        self._handle_fixtures(robot_velocity, pose_1, pose_2, pose_3) 
+
+    def _handle_fixture_6(self, robot_velocity):
+        """Handle logic for fixture 6."""
+        pose_1 = np.array([])  # Above pick up 6. component
+        pose_2 = np.array([]) # Pick up 6. component
+        pose_3 = np.array([]) # Above pick up 6. component when grasped
+        self._handle_fixtures(robot_velocity, pose_1, pose_2, pose_3) 
+
+    
+
     def _handle_movement_to_place(self, robot_velocity):
         """Handle logic for moving the grasped component to the place position above the box."""
+
+        def create_blended_path(start_pos, end_pos, num_points=50):
+            """Creates a blended path with interpolation between start and end joint positions."""
+            interpolated_points = interpolate_joint_positions(start_pos, end_pos, num_points)
+            return [{'q': pos, 'acceleration': 1.0, 'blend': 0.7} for pos in interpolated_points]
+
+
         match self.small_state:
             case 0:
                 # Interpolate
                 self.joint_pos_intermediate = np.array([2.43, -130.48, 95.77, 304.95, 269.33, 261.24])
                 self.joint_pos_place = np.array([-35.01, -73.70, 84.80, 256.20, 269.29, 261.24])
 
-                self.from_actual_to_intermediate = interpolate_joint_positions(self.robot_controller.get_actual_joint_positions(), self.joint_pos_intermediate, num_points=10)
-                self.from_intermediate_to_place = interpolate_joint_positions(self.joint_pos_intermediate, self.joint_pos_place, num_points=10)
-                self.from_place_to_intermediate = interpolate_joint_positions(self.joint_pos_place, self.joint_pos_intermediate, num_points=10)
+                # self.from_actual_to_intermediate = interpolate_joint_positions(self.robot_controller.get_actual_joint_positions(), self.joint_pos_intermediate, num_points=100)
+                # self.from_intermediate_to_place = interpolate_joint_positions(self.joint_pos_intermediate, self.joint_pos_place, num_points=100)
+                # self.from_place_to_intermediate = interpolate_joint_positions(self.joint_pos_place, self.joint_pos_intermediate, num_points=100)
 
-                self.intermediate_index = 0  # Initialize the index for interpolating joint positions
+                # Create blended paths
+                self.path_to_intermediate = create_blended_path(self.robot_controller.get_actual_joint_positions(), self.joint_pos_intermediate)
+                self.path_to_place = create_blended_path(self.joint_pos_intermediate, self.joint_pos_place)
+                self.path_back_to_intermediate = create_blended_path(self.joint_pos_place, self.joint_pos_intermediate)
+
+
+                self.path_index = 0  # Initialize the index for interpolating joint positions
                 self.small_state += 1
             case 1:
                 # From actual to intermediate point
-                if self.intermediate_index < len(self.from_actual_to_intermediate):
-                    joint_pos = self.from_actual_to_intermediate[self.intermediate_index]
+                # if self.intermediate_index < len(self.from_actual_to_intermediate):
+                #     joint_pos = self.from_actual_to_intermediate[self.intermediate_index]
                     
-                    if self.robot_controller.move_to_position(joint_pos, robot_velocity):
-                        self.intermediate_index += 1  # Move to the next joint position
-                else:
-                    self.small_state += 1  # Move to the next state once all intermediate points are reached
-                    self.intermediate_index = 0
+                #     if self.robot_controller.move_to_position(joint_pos, robot_velocity):
+                #         self.intermediate_index += 1  # Move to the next joint position
+                # else:
+                #     self.small_state += 1  # Move to the next state once all intermediate points are reached
+                #     self.intermediate_index = 0
 
                 # if self.robot_controller.move_to_position(self.joint_pos_intermediate, robot_velocity):
                 #     self.small_state += 1
+
+                # Execute path to intermediate
+                if self.robot_controller.moveJ_path(self.path_to_intermediate[self.path_index], velocity=robot_velocity, asynchronous=False):
+                    self.path_index += 1  # Move to the next position in the path
+                else:
+                    self.small_state += 1  # Transition to next state
+                    self.path_index = 0
             case 2:
                 # From intermediate to place point
                 # if self.intermediate_index < len(self.from_intermediate_to_place):
@@ -174,8 +240,15 @@ class StateMachine:
                 #     self.small_state += 1  # Move to the next state once all intermediate points are reached
                 #     self.intermediate_index = 0
 
-                if self.robot_controller.move_to_position(self.joint_pos_place, robot_velocity):
+                # if self.robot_controller.move_to_position(self.joint_pos_place, robot_velocity):
+                #     self.small_state += 1
+
+                # Execute path to place position
+                if self.robot_controller.moveJ_path(self.path_to_place[self.path_index], velocity=robot_velocity, asynchronous=False):
+                    self.path_index += 1  # Move to the next position in the path
+                else:
                     self.small_state += 1
+                    self.path_index = 0
             case 3:
                 # Open gripper
                 if self.robot_controller.open_gripper(): 
@@ -192,9 +265,19 @@ class StateMachine:
                 #     self.intermediate_index = 0
                 #     self.state = 100
 
-                if self.robot_controller.move_to_position(self.joint_pos_intermediate, robot_velocity):
+                # if self.robot_controller.move_to_position(self.joint_pos_intermediate, robot_velocity):
+                #     self.small_state = 0
+                #     self.state = 100
+
+                # Execute path back to intermediate
+                if self.robot_controller.moveJ_path(self.path_back_to_intermediate[self.path_index], velocity=robot_velocity, asynchronous=False):
+                    self.path_index += 1  # Move to the next position in the path
+                else:
+                    # Reset to initial state
                     self.small_state = 0
+                    self.path_index = 0
                     self.state = 100
+
 
     def _decide_next_state(self, fixture_results):
         """Decide the next state based on fixture detection results."""
