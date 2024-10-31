@@ -31,39 +31,47 @@ class RobotController:
         """Get the actual joint positions of the robot."""
         return np.degrees(self.rtde_r.getActualQ())
     
-    def moveJ_path(self, path, velocity=None, asynchronous=False):
+    def set_robot_velocity(self, speed_fraction=1):
+        """Set the speed slider on the controller. It's a fraction value between 0 and 1 based on the selected velocity when using moveL"""
+        return self.rtde_io.setSpeedSlider(speed_fraction)
+    
+    def moveJ_path(self, path):
         """
-        Executes a moveJ command with a path containing one joint position, 
+        Executes a moveJ command with a path containing joint positions, 
         with speed, acceleration, and blend radius.
 
         Args:
-            path (dict): It is a dict with:
-                - 'q': joint positions in degrees,
-                - 'acceleration': joint acceleration of leading axis [rad/s^2],
-                - 'blend': blend radius for smooth transitions [m].
-            velocity (float): If provided, overrides the speed defined in the path entry.
-            asynchronous (bool): If true, command executes asynchronously.
+            path (List): It contains:
+                - A list of joint positions in radians,
+                - For each list it contains a list of joint velocity, acceleration, and a blend radius for smooth transitions [m].
         
         Returns:
             bool: True if the command was successfully sent, False otherwise.
         """
-        # Convert joint positions to radians
-        radians_positions = [math.radians(deg) for deg in path['q']]
+        return self.rtde_c.moveJ(path)
+    
+    def moveL_path(self, path):
+        """
+        Executes a moveL command with a path containing TCP poses, 
+        with speed, acceleration, and blend radius.
 
-        # Prepare formatted path as a list containing one entry
-        formatted_path = [radians_positions, velocity, path['acceleration'], path['blend']]
+        Args:
+            path (List): It contains:
+                - A list of TCP poses in base frame,
+                - For each list it contains a list of joint velocity, acceleration, and a blend radius for smooth transitions [m].
+        
+        Returns:
+            bool: True if the command was successfully sent, False otherwise.
+        """
+        return self.rtde_c.moveL(path)
 
-        # Execute the moveJ command with formatted path
-        return self.rtde_c.moveJ([formatted_path], asynchronous)
 
-
-    def move_to_cartesian_pose(self, target_pose, velocity=0.5, acceleration=0.3, blend=0.0):
+    def moveL(self, target_pose, velocity=0.5, acceleration=0.3):
         """
         Move the robot's end-effector to the target pose in Cartesian space.
         
         target_pose: A list or array with [x, y, z, roll, pitch, yaw].
         velocity: Desired velocity for the movement.
         acceleration: Desired acceleration for the movement.
-        blend: Desired blend for the movement.
         """
-        return self.rtde_c.servoC(target_pose, velocity=velocity, acceleration=acceleration, blend=blend)
+        return self.rtde_c.moveL(target_pose, speed=velocity, acceleration=acceleration)

@@ -80,6 +80,7 @@ class RobotSafetyMonitor:
         tcp_pose_camera_frame = np.dot(self.T_robot2cam, np.append(tcp_pose[:3], 1))
         self.tcp_coords = tcp_pose_camera_frame[:3]
 
+
     def stop_monitoring(self):
         """Stop the pipeline."""
         self.pipeline.stop()

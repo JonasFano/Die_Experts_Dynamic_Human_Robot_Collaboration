@@ -138,9 +138,14 @@ try:
 
         cv2.imshow("RealSense Image", detected_markers)
 
+        
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             break
+
+        if key == ord("p"):
+            print(pose)
 
         if key == ord("s"):
             robot_pose = rtde_r.getActualTCPPose()
