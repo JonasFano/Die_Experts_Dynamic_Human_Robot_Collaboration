@@ -18,10 +18,10 @@ def main():
 
     # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
     patch_coords_list = [
-        (166, 203, 18, 12), # Component 1
-        (152, 223, 18, 12), 
-        (133, 243, 18, 12), 
-        (113, 265, 18, 12) # Component 4
+        (485, 345, 20, 15) # Component 1
+        (465, 365, 20, 15) # Component 2
+        (440, 395, 20, 15) # Component 3
+        (415, 420, 20, 15) # Component 4
     ]
 
     # Initialize components

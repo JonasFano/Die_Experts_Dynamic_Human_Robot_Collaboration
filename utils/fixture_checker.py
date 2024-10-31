@@ -248,12 +248,6 @@ if __name__ == "__main__":
     # Assuming the images are loaded externally and passed as numpy arrays
     # You can capture these from a camera or any other image acquisition system
     reference_image = cv2.imread('images/reference.png', cv2.IMREAD_GRAYSCALE)  # Load reference image from camera or input
-    reference_image2 = cv2.imread('images/reference2.png', cv2.IMREAD_GRAYSCALE)  # Load reference image from camera or input
-    current_image = cv2.imread('images/all_components.png', cv2.IMREAD_GRAYSCALE)  # Load current image from camera or input
-    image_without_comp_1 = cv2.imread('images/image_without_comp_1.png', cv2.IMREAD_GRAYSCALE)
-    image_without_comp_2 = cv2.imread('images/image_without_comp_2.png', cv2.IMREAD_GRAYSCALE)
-    image_without_comp_3 = cv2.imread('images/image_without_comp_3.png', cv2.IMREAD_GRAYSCALE)
-    image_without_comp_4 = cv2.imread('images/image_without_comp_4.png', cv2.IMREAD_GRAYSCALE)
 
     
     # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
@@ -261,10 +255,10 @@ if __name__ == "__main__":
     # patch_coords_2 = (155, 225, 20, 15) # Component 2
     # patch_coords_3 = (140, 245, 20, 15) # Component 3
     # patch_coords_4 = (120, 265, 20, 15) # Component 4
-    patch_coords_1 = (170, 200, 20, 15) # Component 1
-    patch_coords_2 = (150, 220, 20, 15) # Component 2
-    patch_coords_3 = (135, 240, 20, 15) # Component 3
-    patch_coords_4 = (115, 260, 20, 15) # Component 4
+    patch_coords_1 = (485, 345, 20, 15) # Component 1
+    patch_coords_2 = (465, 365, 20, 15) # Component 2
+    patch_coords_3 = (440, 395, 20, 15) # Component 3
+    patch_coords_4 = (415, 420, 20, 15) # Component 4
 
 
     # List of all patch coordinates
@@ -277,14 +271,19 @@ if __name__ == "__main__":
 
     # CheckFixtures.visualize(current_image, patch_coords_3)
     # check_fixtures.visualize_all_patches(current_image)
-    check_fixtures.visualize_all_patches(reference_image2)
+    check_fixtures.visualize_all_patches(reference_image)
 
     # Check if objects are detected in all patches
-    results = check_fixtures.check_all_patches(current_image)
-    
-    for patch, detected in results.items():
-        if detected:
-            print(f"Object detected in {patch}.")
-        else:
-            print(f"No object detected in {patch}.")
-    
+    try:
+        current_image = cv2.imread('images/all_components.png', cv2.IMREAD_GRAYSCALE)  # Load current image from camera or input
+
+        results = check_fixtures.check_all_patches(current_image)
+        
+        for patch, detected in results.items():
+            if detected:
+                print(f"Object detected in {patch}.")
+            else:
+                print(f"No object detected in {patch}.")
+    except:
+        print("No image to compare to")
+        
