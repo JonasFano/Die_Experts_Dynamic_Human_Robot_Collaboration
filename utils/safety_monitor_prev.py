@@ -10,6 +10,8 @@ from utils.abfilter import ABFilter
 class RobotSafetyMonitor:
     def __init__(self, safety_distance=0.5, color_res=(1280, 720), depth_res=(1280, 720), fps=30):
         self.safety_distance = safety_distance
+        self.robotSphereCenter = [1,1,1]
+        self.robotSphereRadius = 1
         self.pipeline = rs.pipeline()
         self.config = rs.config()
 
@@ -112,6 +114,60 @@ class RobotSafetyMonitor:
             (point1[2] - point2[2]) ** 2
         )
 
+    @staticmethod
+    def line_sphere_intersection(p1, p2, center, radius):
+        # Convert points to numpy arrays
+        p1 = np.array(p1)
+        p2 = np.array(p2)
+        center = np.array(center)
+
+        # Calculate the direction vector of the line
+        d = p2 - p1
+
+        # Calculate coefficients for the quadratic equation at^2 + bt + c = 0
+        a = np.dot(d, d)
+        b = 2 * np.dot(d, p1 - center)
+        c = np.dot(p1 - center, p1 - center) - radius**2
+
+        # Calculate the discriminant
+        discriminant = b**2 - 4 * a * c
+
+        # Check if there are intersections
+        if discriminant < 0:
+            return None  # No intersection
+        elif discriminant == 0:
+            # One intersection (line is tangent to sphere)
+            t = -b / (2 * a)
+            intersection = p1 + t * d
+            return [intersection]
+        else:
+            # Two intersections
+            t1 = (-b + np.sqrt(discriminant)) / (2 * a)
+            t2 = (-b - np.sqrt(discriminant)) / (2 * a)
+            intersection1 = p1 + t1 * d
+            intersection2 = p1 + t2 * d
+            return [intersection1, intersection2]
+
+    def checkDistToSphere(self,points):
+        minDist = float('inf')  
+        center = self.robotSphereCenter 
+        radius = self.robotSphereRadius
+
+        for point in points:
+            p1 = np.array(point)
+
+            intersections = self.line_sphere_intersection(p1, center, center, radius)
+
+            if intersections is None:
+                continue  
+
+            distances = [self.calculate_distance(inter, p1) for inter in intersections]            
+            closest_distance = min(distances)
+
+            if closest_distance < minDist:
+                minDist = closest_distance
+
+        return minDist
 
     def monitor_safety(self, patch_coords_list):
         """Runs the main loop for safety monitoring."""
@@ -169,8 +225,6 @@ class RobotSafetyMonitor:
                     depth_value = depth_frame.get_distance(cx, cy)
                     human_coords = rs.rs2_deproject_pixel_to_point(depth_intrin, [cx, cy], depth_value)
 
-                    distance = self.calculate_distance(self.tcp_coords, human_coords)
-
                     # Display the distance for each landmark
                     cv2.putText(color_image, f"D:{distance:.2f}m", (cx, cy),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
@@ -178,11 +232,9 @@ class RobotSafetyMonitor:
                     # cv2.putText(color_image, f"D:{human_coords[0]:.2f}, {human_coords[1]:.2f}, {human_coords[2]:.2f}", (cx, cy),
                     #             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
 
-                    # Check if robot is too close to human
-                    if distance < self.safety_distance:
-                        too_close = True
-
-            if too_close:
+            landmark_points = [(landmark.x, landmark.y, landmark.z) for landmark in results.pose_landmarks.landmark]
+            distance=self.checkDistToSphere(landmark_points)
+            if distance<self.safety_distance:
                 print("Robot too close to human! Slowing down...")
 
         # Colors for each patch (you can customize the colors for each rectangle)
