@@ -56,56 +56,56 @@ class StateMachine:
         self.robot_controller.set_robot_velocity(speed_fraction)
 
 
-    def process_state_machine(self):
+    def process_state_machine(self, fixture_results, current_depth_frame):
         """Process the state machine to control robot behavior."""
-        while not self.terminate:
-            # Monitor safety
-            tcp_pose = self.robot_controller.get_tcp_pose()
-            self.safety_monitor.set_robot_tcp(tcp_pose)
-            safety_warning, distance, current_frame, current_depth_frame, self.terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
-
-            # Check fixtures
-            fixture_results = self.fixture_checker.check_all_patches(current_frame, current_depth_frame)
-
-            # Determine velocity
-            self.change_robot_velocity(safety_warning, fixture_results, distance)
+#        while not self.terminate:
+#            # Monitor safety
+#            tcp_pose = self.robot_controller.get_tcp_pose()
+#            self.safety_monitor.set_robot_tcp(tcp_pose)
+#            safety_warning, distance, current_frame, current_depth_frame, self.terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
+#
+#            # Check fixtures
+#            fixture_results = self.fixture_checker.check_all_patches(current_frame, current_depth_frame)
+#
+#            # Determine velocity
+#            self.change_robot_velocity(safety_warning, fixture_results, distance)
 
             # Handle state transitions
-            match self.state:
-                case 0:  # State for fixture 1
-                    print("State 1")
-                    self._handle_fixture_1()
+        match self.state:
+            case 0:  # State for fixture 1
+                print("State 1")
+                self._handle_fixture_1()
 
-                case 1:  # State for fixture 2
-                    print("State 2")
-                    self._handle_fixture_2()
+            case 1:  # State for fixture 2
+                print("State 2")
+                self._handle_fixture_2()
 
-                case 2:  # State for fixture 3
-                    print("State 3")
-                    self._handle_fixture_3()
-                
-                case 3:  # State for fixture 4
-                    print("State 4")
-                    self._handle_fixture_4()
+            case 2:  # State for fixture 3
+                print("State 3")
+                self._handle_fixture_3()
+            
+            case 3:  # State for fixture 4
+                print("State 4")
+                self._handle_fixture_4()
 
-                case 4:  # State for fixture 5
-                    print("State 5")
-                    self._handle_fixture_5()
+            case 4:  # State for fixture 5
+                print("State 5")
+                self._handle_fixture_5()
 
-                case 5:  # State for fixture 6
-                    print("State 6")
-                    self._handle_fixture_6()
+            case 5:  # State for fixture 6
+                print("State 6")
+                self._handle_fixture_6()
 
-                case 6:  # State for moving from fixtures to place position
-                    print("State 7")
-                    self._handle_movement_to_place()
+            case 6:  # State for moving from fixtures to place position
+                print("State 7")
+                self._handle_movement_to_place()
 
-                case 1000: # Camera calibration state for checking fixture detection
-                    self._check_fixtures(fixture_results)
-                    self.fixture_checker.calibrate_depth(current_depth_frame)
+            case 1000: # Camera calibration state for checking fixture detection
+                self._check_fixtures(fixture_results)
+                self.fixture_checker.calibrate_depth(current_depth_frame)
 
-                case _:  # Initial state
-                    self._decide_next_state(fixture_results)
+            case _:  # Initial state
+                self._decide_next_state(fixture_results)
 
 
     def _handle_fixtures(self, pose_fixture, path_intermediate_to_fixture, path_lift_component):
