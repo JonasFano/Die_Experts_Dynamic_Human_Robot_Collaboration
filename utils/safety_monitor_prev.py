@@ -111,8 +111,6 @@ class RobotSafetyMonitor:
         """Runs the main loop for safety monitoring."""
         # Get frames from the RealSense camera
         frames = self.pipeline.wait_for_frames()
-        print("Successfully waited")
-
         aligned_frames = self.align.process(frames)
 
         depth_frame = aligned_frames.get_depth_frame()
@@ -165,9 +163,9 @@ class RobotSafetyMonitor:
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
 
             landmark_points = [(landmark.x, landmark.y, landmark.z) for landmark in results.pose_landmarks.landmark]
-            # distance=self.checkDistToSphere(landmark_points)
-            # if distance<self.safety_distance:
-            #     print("Robot too close to human! Slowing down...")
+            distance=self.checkDistToSphere(landmark_points)
+            if distance<self.safety_distance:
+                print("Robot too close to human! Slowing down...")
 
         # Colors for each patch (you can customize the colors for each rectangle)
         colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0)]  # Green, Blue, Red, Yellow
@@ -193,8 +191,6 @@ class RobotSafetyMonitor:
             terminate = True
         else:
             terminate = False
-
-        print(terminate)
         
         return too_close, distance, cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY), depth_image, terminate
 

@@ -88,10 +88,10 @@ class RobotProcessManager:
 
     def start_threads(self):
         threads = [
-            threading.Thread(target=self.monitor_safety),
-            threading.Thread(target=self.check_fixtures),
-            threading.Thread(target=self.adjust_velocity),
-            threading.Thread(target=self.process_state_machine)  # Add process_state_machine here
+            # threading.Thread(target=self.monitor_safety),
+            # threading.Thread(target=self.check_fixtures),
+            # threading.Thread(target=self.adjust_velocity),
+            # threading.Thread(target=self.process_state_machine)  # Add process_state_machine here
         ]
         for thread in threads:
             thread.start()
@@ -105,32 +105,32 @@ class RobotProcessManager:
             self.safety_warning, self.distance, self.current_frame, self.current_depth_frame, self.terminate = \
                 self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
             
-            # Debugging statement to check if frames are captured
-            if self.current_frame is None:
-                print("Warning: current_frame is None.")
-            elif np.sum(self.current_frame) == 0:
-                print("Warning: current_frame is black or empty.")
-            time.sleep(0.01)  # Short sleep to allow other threads to run
-
-
-    def check_fixtures(self):
-        while not self.terminate and self.current_frame is not None:
             self.fixture_results = self.fixture_checker.check_all_patches(self.current_frame, self.current_depth_frame)
-            time.sleep(0.01)  # Short sleep to allow other threads to run
+            self.state_machine.change_robot_velocity(self.safety_warning, self.fixture_results, self.distance)
+            self.state_machine.process_state_machine(self.fixture_results, self.current_depth_frame)
+            # time.sleep(0.01)  # Short sleep to allow other threads to run
 
 
-    def adjust_velocity(self):
-        while not self.terminate:
-            if self.safety_warning and self.fixture_results:
-                self.state_machine.change_robot_velocity(self.safety_warning, self.fixture_results, self.distance)
-            time.sleep(0.01)  # Short sleep to allow other threads to run
+    # def check_fixtures(self):
+    #     while not self.terminate and self.current_frame is not None:
+    #         self.fixture_results = self.fixture_checker.check_all_patches(self.current_frame, self.current_depth_frame)
+    #         self.state_machine.change_robot_velocity(self.safety_warning, self.fixture_results, self.distance)
+    #         self.state_machine.process_state_machine(self.fixture_results, self.current_depth_frame)
+            # time.sleep(0.01)  # Short sleep to allow other threads to run
 
 
-    def process_state_machine(self):
-        while not self.terminate:
-            if self.fixture_results:
-                self.state_machine.process_state_machine(self.fixture_results, self.current_depth_frame)
-            time.sleep(0.01)  # Short sleep to allow other threads to run
+    # def adjust_velocity(self):
+    #     while not self.terminate:
+    #         if self.safety_warning and self.fixture_results:
+    #             self.state_machine.change_robot_velocity(self.safety_warning, self.fixture_results, self.distance)
+            # time.sleep(0.01)  # Short sleep to allow other threads to run
+
+
+    # def process_state_machine(self):
+    #     while not self.terminate:
+    #         if self.fixture_results:
+    #             self.state_machine.process_state_machine(self.fixture_results, self.current_depth_frame)
+            # time.sleep(0.01)  # Short sleep to allow other threads to run
 
 
     # def run(self):
@@ -157,10 +157,17 @@ class RobotProcessManager:
         # Start all threads, including process_state_machine
         threads = self.start_threads()
         try:
+            while not self.terminate:
+                self.safety_warning, self.distance, self.current_frame, self.current_depth_frame, self.terminate = \
+                    self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
+                
+                self.fixture_results = self.fixture_checker.check_all_patches(self.current_frame, self.current_depth_frame)
+                self.state_machine.change_robot_velocity(self.safety_warning, self.fixture_results, self.distance)
+                self.state_machine.process_state_machine(self.fixture_results, self.current_depth_frame)
             # Main thread can now just wait for user or other events,
             # or simply idle while other threads run independently.
-            for thread in threads:
-                thread.join()  # Wait for all threads to complete
+            # for thread in threads:
+            #     thread.join()  # Wait for all threads to complete
         finally:
             self.terminate = True
             for thread in threads:
@@ -182,10 +189,10 @@ def main():
 
     # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
     patch_coords_list = [
-        (485, 345, 20, 15), 
-        (465, 365, 20, 15), 
-        (440, 395, 20, 15), 
-        (415, 420, 20, 15)
+        (480, 325, 20, 15), 
+        (460, 350, 20, 15), 
+        (435, 375, 20, 15), 
+        (410, 400, 20, 15)
     ]
 
     # Initialize and run the manager

@@ -11,7 +11,7 @@ class CheckFixtures:
         self.max_dist = max_dist  # Maximum valid distance for object detection
 
     @staticmethod
-    def compare_image_patch(reference_image, current_image, patch_coords, threshold=40):
+    def compare_image_patch(reference_image, current_image, patch_coords, threshold=100):
         """
         Compares a predefined patch of the reference and current images.
         
@@ -49,7 +49,7 @@ class CheckFixtures:
 
 
     @staticmethod
-    def object_detected(diff_percentage, percentage_threshold=35.0):
+    def object_detected(diff_percentage, percentage_threshold=50.0):
         """
         Determines if an object has been detected based on the percentage of different pixels.
         
