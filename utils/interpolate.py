@@ -30,32 +30,31 @@ def interpolate_tcp_poses(pose_start, pose_end, num_points=10):
     Interpolate between two TCP poses: (position, orientation).
     
     Parameters:
-    pose_start (tuple): The starting TCP pose (position, orientation).
-                        Position is a list of [x, y, z] and orientation is a list of [roll, pitch, yaw].
-    pose_end (tuple): The ending TCP pose (position, orientation).
+    pose_start (list): The starting TCP pose [x, y, z, roll, pitch, yaw].
+    pose_end (list): The ending TCP pose [x, y, z, roll, pitch, yaw].
     num_points (int): The number of interpolation points (default is 10).
     
     Returns:
     list: A list of interpolated TCP poses.
     """
-    position_start, orientation_start = pose_start
-    position_end, orientation_end = pose_end
+    # Split into positions and orientations
+    position_start = np.array(pose_start[:3])
+    orientation_start = np.array(pose_start[3:])
+    position_end = np.array(pose_end[:3])
+    orientation_end = np.array(pose_end[3:])
 
     # Interpolate positions
-    position_start = np.array(position_start)
-    position_end = np.array(position_end)
     t_values = np.linspace(0, 1, num_points)[:, np.newaxis]  # Reshape for broadcasting
     interpolated_positions = position_start + t_values * (position_end - position_start)
 
     # Interpolate orientations
-    orientation_start = np.array(orientation_start)
-    orientation_end = np.array(orientation_end)
     interpolated_orientations = orientation_start + t_values * (orientation_end - orientation_start)
 
     # Combine interpolated positions and orientations into a single pose
-    interpolated_poses = [(pos.tolist(), orient.tolist()) for pos, orient in zip(interpolated_positions, interpolated_orientations)]
+    interpolated_poses = [np.concatenate((pos, orient)).tolist() for pos, orient in zip(interpolated_positions, interpolated_orientations)]
 
     return interpolated_poses
+
 
 
 

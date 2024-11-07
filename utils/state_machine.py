@@ -3,9 +3,8 @@ import math
 from utils.interpolate import interpolate_tcp_poses
 
 class StateMachine:
-    def __init__(self, robot_controller, safety_monitor, fixture_checker):
+    def __init__(self, robot_controller, fixture_checker):
         self.robot_controller = robot_controller
-        self.safety_monitor = safety_monitor
         self.fixture_checker = fixture_checker
         self.small_state = 0
         self.state = 1000 # Type 1000 for calibration
@@ -15,17 +14,17 @@ class StateMachine:
         self.acceleration = 1.0
         self.blend = {"non": 0.0, "large": 0.07}
 
-        self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.5007059810407316, -0.290828921105704, 3.1229774522374507, 0.021559598658174906])
-        self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.29148843827639254, -0.7137182724185805, -3.0211880976990457, -0.0527401049100824])
-        self.pose_fixture_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.20364282861631133, -1.7173584058437448, 2.614817123624442, 0.015662793265223476]) # Above pick up 1. component
-        self.pose_fixture_2 = np.array([-0.07957651394105475, -0.5775855654308832, 0.2023741615008534, -1.7060825343589325, 2.614852489706341, 0.022595902601295428])  # Above pick up 2. component
-        self.pose_fixture_3 = np.array([-0.04925448702503588, -0.5082985306025327, 0.1936708406298164, -1.7261076468170813, 2.623645026630323, 0.0023482443015084543])  # Above pick up 3. component
-        self.pose_fixture_4 = np.array([-0.025557349301992764, -0.44688229341926045, 0.2003871289944606, -1.7245031583352266, 2.6246444976427994, 0.002526657100955647])  # Above pick up 4. component
+        self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, -0.290828921105704, 3.1229774522374507, 0.021559598658174906])
+        self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.28, -0.7137182724185805, -3.0211880976990457, -0.0527401049100824])
+        self.pose_fixture_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.20, -1.7173584058437448, 2.614817123624442, 0.015662793265223476]) # Above pick up 1. component
+        self.pose_fixture_2 = np.array([-0.07957651394105475, -0.5775855654308832, 0.20, -1.7060825343589325, 2.614852489706341, 0.022595902601295428])  # Above pick up 2. component
+        self.pose_fixture_3 = np.array([-0.04925448702503588, -0.5082985306025327, 0.20, -1.7261076468170813, 2.623645026630323, 0.0023482443015084543])  # Above pick up 3. component
+        self.pose_fixture_4 = np.array([-0.025557349301992764, -0.44688229341926045, 0.20, -1.7245031583352266, 2.6246444976427994, 0.002526657100955647])  # Above pick up 4. component
         self.pose_fixture_5 = np.array([])
         self.pose_fixture_6 = np.array([])
 
-        self.upper_offset = np.array([0.0, 0.0, 0.15]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
-        self.lower_offset = np.array([0.0, 0.0, -0.04]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
+        self.upper_offset = np.array([0.0, 0.0, 0.15, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
+        self.lower_offset = np.array([0.0, 0.0, -0.04, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
 
         self.path_to_place = self.create_blended_path(self.pose_intermediate, self.pose_place, num_points=20, fixed_end=True)
         self.path_back_to_intermediate = self.create_blended_path(self.pose_place, self.pose_intermediate, num_points=20, fixed_end=False)
@@ -58,19 +57,7 @@ class StateMachine:
 
     def process_state_machine(self, fixture_results, current_depth_frame):
         """Process the state machine to control robot behavior."""
-#        while not self.terminate:
-#            # Monitor safety
-#            tcp_pose = self.robot_controller.get_tcp_pose()
-#            self.safety_monitor.set_robot_tcp(tcp_pose)
-#            safety_warning, distance, current_frame, current_depth_frame, self.terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
-#
-#            # Check fixtures
-#            fixture_results = self.fixture_checker.check_all_patches(current_frame, current_depth_frame)
-#
-#            # Determine velocity
-#            self.change_robot_velocity(safety_warning, fixture_results, distance)
-
-            # Handle state transitions
+        # Handle state transitions
         match self.state:
             case 0:  # State for fixture 1
                 print("State 1")
