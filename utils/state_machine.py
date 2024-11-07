@@ -24,8 +24,8 @@ class StateMachine:
         self.pose_fixture_5 = np.array([])
         self.pose_fixture_6 = np.array([])
 
-        self.upper_offset = np.array([0.0, 0.0, 0.15]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
-        self.lower_offset = np.array([0.0, 0.0, -0.04]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
+        self.upper_offset = np.array([0.0, 0.0, 0.15, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
+        self.lower_offset = np.array([0.0, 0.0, -0.04, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
 
         self.path_to_place = self.create_blended_path(self.pose_intermediate, self.pose_place, num_points=20, fixed_end=True)
         self.path_back_to_intermediate = self.create_blended_path(self.pose_place, self.pose_intermediate, num_points=20, fixed_end=False)
