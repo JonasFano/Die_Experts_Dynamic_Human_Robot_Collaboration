@@ -61,16 +61,6 @@ class RobotSafetyMonitor:
         return distance_to_surface
 
 
-    def checkDistToSphere(self,points):
-        minDist = np.inf
-        for point in points:
-            distance = self.calculate_distance_to_sphere(point)          
-
-            if distance < minDist:
-                minDist = distance
-        return minDist
-
-
     def monitor_safety(self, patch_coords_list):
         """Runs the main loop for safety monitoring."""
         if self.robot_pose_state == 1:
@@ -130,14 +120,17 @@ class RobotSafetyMonitor:
                     depth_value = depth_frame.get_distance(cx, cy)
                     human_coords = rs.rs2_deproject_pixel_to_point(depth_intrin, [cx, cy], depth_value)
 
+                    distance = self.calculate_distance_to_sphere(human_coords)
+
                     # Display the distance for each landmark
                     cv2.putText(color_image, f"D:{distance:.2f}m", (cx, cy),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
-
-            landmark_points = [(landmark.x, landmark.y, landmark.z) for landmark in results.pose_landmarks.landmark]
             
-            distance=self.checkDistToSphere(human_coords)
-            if distance<self.safety_distance:
+                    # Check if robot is too close to human
+                    if distance < self.safety_distance:
+                        too_close = True
+
+            if too_close:
                 print("Robot too close to human! Slowing down...")
 
         # Colors for each patch (you can customize the colors for each rectangle)

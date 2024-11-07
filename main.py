@@ -176,7 +176,6 @@ class RobotProcessManager:
             cv2.destroyAllWindows()
 
 
-
 def main():
     # Initialize parameters
     robot_ip = "192.168.1.100"

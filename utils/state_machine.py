@@ -13,7 +13,7 @@ class StateMachine:
 
         # self.velocity = {"low": 0.2, "medium": 0.6, "high": 1.4}
         self.velocity = {"low": 0.1, "medium": 0.4, "high": 1.0}
-        self.acceleration = 0.5
+        self.acceleration = 1.0
         self.blend = {"non": 0.0, "large": 0.02}
 
         self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
@@ -49,7 +49,7 @@ class StateMachine:
     def change_robot_velocity(self, safety_warning, fixture_results, distance):
         """Adjust robot velocity based on safety warnings and fixture detection."""
         if safety_warning:
-            speed_fraction = 1.0 # 0.3 * distance
+            speed_fraction = 0.3 # * distance
         elif np.any(fixture_results == 1):
             speed_fraction = 1.0
         else:
