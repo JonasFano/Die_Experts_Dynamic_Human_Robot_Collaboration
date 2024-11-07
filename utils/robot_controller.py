@@ -66,7 +66,7 @@ class RobotController:
         return self.rtde_c.moveL(path)
 
 
-    def moveL(self, target_pose, velocity=0.5, acceleration=0.3):
+    def moveL(self, target_pose, velocity=0.2, acceleration=0.3):
         """
         Move the robot's end-effector to the target pose in Cartesian space.
         

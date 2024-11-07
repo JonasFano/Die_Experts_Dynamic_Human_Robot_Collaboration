@@ -1,5 +1,4 @@
 import numpy as np
-import math
 from utils.interpolate import interpolate_tcp_poses
 
 class StateMachine:
@@ -9,11 +8,13 @@ class StateMachine:
         self.small_state = 0
         self.state = 100 # Type 1000 for calibration
         self.terminate = False
+        self.num_points_interp = 20
+        self.robot_pose_state = 0 # 0 -> home, 1 -> fixtures, 2 -> place
 
         # self.velocity = {"low": 0.2, "medium": 0.6, "high": 1.4}
-        self.velocity = {"low": 0.2, "medium": 0.2, "high": 0.2}
-        self.acceleration = 0.2 # 1.0
-        self.blend = {"non": 0.01, "large": 0.07}
+        self.velocity = {"low": 0.1, "medium": 0.4, "high": 1.0}
+        self.acceleration = 0.5
+        self.blend = {"non": 0.0, "large": 0.02}
 
         self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
         self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.28, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
@@ -24,25 +25,25 @@ class StateMachine:
         self.pose_fixture_5 = np.array([])
         self.pose_fixture_6 = np.array([])
 
-        self.upper_offset = np.array([0.0, 0.0, 0.3, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
+        self.upper_offset = np.array([0.0, 0.0, 0.15, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
         self.lower_offset = np.array([0.0, 0.0, -0.1, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
 
-        self.path_to_place = self.create_blended_path(self.pose_intermediate, self.pose_place, num_points=10, fixed_end=False)
-        self.path_back_to_intermediate = self.create_blended_path(self.pose_place, self.pose_intermediate, num_points=10, fixed_end=False)
+        self.path_to_place = self.create_blended_path(self.pose_intermediate, self.pose_place, num_points=self.num_points_interp+10, fixed_end=True)
+        self.path_back_to_intermediate = self.create_blended_path(self.pose_place, self.pose_intermediate, num_points=self.num_points_interp, fixed_end=True)
 
-        self.path_lift_component_1 = self.create_blended_path(self.pose_fixture_1, self.pose_fixture_1 + self.upper_offset, num_points=5, fixed_end=False) # Path from fixture base pose to upper pose to lift component
-        self.path_lift_component_2 = self.create_blended_path(self.pose_fixture_2, self.pose_fixture_2 + self.upper_offset, num_points=5, fixed_end=False)
-        self.path_lift_component_3 = self.create_blended_path(self.pose_fixture_3, self.pose_fixture_3 + self.upper_offset, num_points=5, fixed_end=False)
-        self.path_lift_component_4 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=5, fixed_end=False)
-        self.path_lift_component_5 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=5, fixed_end=False) # Needs to be adjusted for new components
-        self.path_lift_component_6 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=5, fixed_end=False)
+        self.path_lift_component_1 = self.create_blended_path(self.pose_fixture_1, self.pose_fixture_1 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True) # Path from fixture base pose to upper pose to lift component
+        self.path_lift_component_2 = self.create_blended_path(self.pose_fixture_2, self.pose_fixture_2 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
+        self.path_lift_component_3 = self.create_blended_path(self.pose_fixture_3, self.pose_fixture_3 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
+        self.path_lift_component_4 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
+        self.path_lift_component_5 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True) # Needs to be adjusted for new components
+        self.path_lift_component_6 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
 
-        self.intermediate_to_fixture_1 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_1, num_points=20, fixed_end=False)
-        self.intermediate_to_fixture_2 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_2, num_points=20, fixed_end=False)
-        self.intermediate_to_fixture_3 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_3, num_points=20, fixed_end=False)
-        self.intermediate_to_fixture_4 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=20, fixed_end=False)
-        self.intermediate_to_fixture_5 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=20, fixed_end=False) # Needs to be adjusted for new components
-        self.intermediate_to_fixture_6 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=20, fixed_end=False)
+        self.intermediate_to_fixture_1 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_1, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_2 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_2, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_3 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_3, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_4 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_5 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=self.num_points_interp, fixed_end=True) # Needs to be adjusted for new components
+        self.intermediate_to_fixture_6 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=self.num_points_interp, fixed_end=True)
 
 
     def change_robot_velocity(self, safety_warning, fixture_results, distance):
@@ -94,6 +95,21 @@ class StateMachine:
 
             case _:  # Initial state
                 self._decide_next_state(fixture_results)
+
+
+        if self.state == 6:
+            if self.small_state == 0:
+                self.robot_pose_state = 1 # fixtures
+            elif self.small_state == 1 or self.small_state == 4:
+                self.robot_pose_state = 0 # home
+            elif self.small_state >= 2 and self.small_state <= 3:
+                self.robot_pose_state = 2 # place
+        elif self.state < 6:
+            self.robot_pose_state = 1 # fixtures
+        else:
+            self.robot_pose_state = 0 # home
+        
+        return self.robot_pose_state
 
 
     def _handle_fixtures(self, pose_fixture, path_intermediate_to_fixture, path_lift_component):
@@ -232,6 +248,8 @@ class StateMachine:
         for pose in interpolated_points:
             blended_path.append(pose + [velocity, acceleration, blend])  # Append velocity, acceleration, and blend
 
+        # blended_path.append(end_pose.tolist() + [velocity, acceleration, blend])
+
         # Check if we need to adjust the last element
         if fixed_end:
             blended_path[-1][-1] = self.blend["non"]  # Update the blend value of the last point
@@ -245,7 +263,7 @@ class StateMachine:
         match self.small_state:
             case 0:
                 # Create blended paths
-                self.path_to_intermediate = self.create_blended_path(self.robot_controller.get_tcp_pose(), self.pose_intermediate, num_points=20, fixed_end=False)
+                self.path_to_intermediate = self.create_blended_path(self.robot_controller.get_tcp_pose(), self.pose_intermediate, num_points=self.num_points_interp, fixed_end=True)
                 self.small_state += 1
             case 1:
                 # From actual to intermediate point

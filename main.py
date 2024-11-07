@@ -107,7 +107,7 @@ class RobotProcessManager:
             
             self.fixture_results = self.fixture_checker.check_all_patches(self.current_frame, self.current_depth_frame)
             self.state_machine.change_robot_velocity(self.safety_warning, self.fixture_results, self.distance)
-            self.state_machine.process_state_machine(self.fixture_results, self.current_depth_frame)
+            self.safety_monitor.robot_pose_state = self.state_machine.process_state_machine(self.fixture_results, self.current_depth_frame)
             # time.sleep(0.01)  # Short sleep to allow other threads to run
 
 
@@ -182,7 +182,7 @@ def main():
     robot_ip = "192.168.1.100"
     safety_distance = 0.5
     # home_q_deg = np.array([2.43, -130.48, 95.77, 304.95, 269.33, 261.24])
-    home_pose = np.array([-0.14066618616650417, -0.1347854199496408, 0.50, -0.29084513888394903, 3.12302361256465, 0.021555350542996385])
+    home_pose = np.array([-0.14066618616650417, -0.1347854199496408, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     image_path = os.path.join(current_dir, 'images', 'reference.png')

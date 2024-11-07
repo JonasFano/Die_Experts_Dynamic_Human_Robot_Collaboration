@@ -8,8 +8,12 @@ from utils.abfilter import ABFilter
 class RobotSafetyMonitor:
     def __init__(self, safety_distance=0.5, color_res=(1280, 720), depth_res=(1280, 720), fps=15):
         self.safety_distance = safety_distance
-        self.robotSphereCenter = [1,1,1]
-        self.robotSphereRadius = 1
+        self.sphere_center_fixtures = [-0.65887, -0.32279, 1.93131] # in camera frame
+        self.sphere_center_home = [-0.53615, -0.11935, 1.23248]
+        self.sphere_center_place = [-0.15476, 0.1909, 0.91111]
+        self.robot_pose_state = 0 # 0 -> home, 1 -> fixtures, 2 -> place
+
+        self.sphere_radius = 0.5
         self.pipeline = rs.pipeline()
         self.config = rs.config()
 
@@ -50,65 +54,33 @@ class RobotSafetyMonitor:
         )
 
 
-    @staticmethod
-    def line_sphere_intersection(p1, p2, center, radius):
-        # Convert points to numpy arrays
-        p1 = np.array(p1)
-        p2 = np.array(p2)
-        center = np.array(center)
-
-        # Calculate the direction vector of the line
-        d = p2 - p1
-
-        # Calculate coefficients for the quadratic equation at^2 + bt + c = 0
-        a = np.dot(d, d)
-        b = 2 * np.dot(d, p1 - center)
-        c = np.dot(p1 - center, p1 - center) - radius**2
-
-        # Calculate the discriminant
-        discriminant = b**2 - 4 * a * c
-
-        # Check if there are intersections
-        if discriminant < 0:
-            return None  # No intersection
-        elif discriminant == 0:
-            # One intersection (line is tangent to sphere)
-            t = -b / (2 * a)
-            intersection = p1 + t * d
-            return [intersection]
-        else:
-            # Two intersections
-            t1 = (-b + np.sqrt(discriminant)) / (2 * a)
-            t2 = (-b - np.sqrt(discriminant)) / (2 * a)
-            intersection1 = p1 + t1 * d
-            intersection2 = p1 + t2 * d
-            return [intersection1, intersection2]
+    def calculate_distance_to_sphere(self, point):
+        """Calculate distance from a point to the surface of the sphere."""
+        distance_to_center = np.linalg.norm(np.array(point) - self.sphere_center)
+        distance_to_surface = abs(distance_to_center - self.sphere_radius)
+        return distance_to_surface
 
 
     def checkDistToSphere(self,points):
-        minDist = float('inf')  
-        center = self.robotSphereCenter 
-        radius = self.robotSphereRadius
-
+        minDist = np.inf
         for point in points:
-            p1 = np.array(point)
+            distance = self.calculate_distance_to_sphere(point)          
 
-            intersections = self.line_sphere_intersection(p1, center, center, radius)
-
-            if intersections is None:
-                continue  
-
-            distances = [self.calculate_distance(inter, p1) for inter in intersections]            
-            closest_distance = min(distances)
-
-            if closest_distance < minDist:
-                minDist = closest_distance
-
+            if distance < minDist:
+                minDist = distance
         return minDist
 
 
     def monitor_safety(self, patch_coords_list):
         """Runs the main loop for safety monitoring."""
+        if self.robot_pose_state == 1:
+            self.sphere_center = self.sphere_center_fixtures
+        if self.robot_pose_state == 2:
+            self.sphere_center = self.sphere_center_place
+        else:
+            self.sphere_center = self.sphere_center_home
+
+
         # Get frames from the RealSense camera
         frames = self.pipeline.wait_for_frames()
         aligned_frames = self.align.process(frames)
@@ -163,7 +135,8 @@ class RobotSafetyMonitor:
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
 
             landmark_points = [(landmark.x, landmark.y, landmark.z) for landmark in results.pose_landmarks.landmark]
-            distance=self.checkDistToSphere(landmark_points)
+            
+            distance=self.checkDistToSphere(human_coords)
             if distance<self.safety_distance:
                 print("Robot too close to human! Slowing down...")
 
