@@ -30,65 +30,62 @@ class RobotProcessManager:
         # Initial home position
         self.home = home
 
-
-    def start_processes(self):
-        processes = [
-            multiprocessing.Process(target=self.monitor_and_adjust),
-            multiprocessing.Process(target=self.process_state_machine)
-        ]
-        for process in processes:
-            process.start()
-        return processes
-
+    def start_process(self):
+        # Start process_state_machine as a separate process
+        process = multiprocessing.Process(target=self.process_state_machine)
+        process.start()
+        return process
 
     def monitor_and_adjust(self):
-        while not self.shared_data["terminate"]:
-            print("Monitor Safety and Adjust Velocity is Running")
+        """This function runs within the main process and monitors safety conditions."""
+        print("Monitor Safety and Adjust Velocity is Running")
 
-            # Run safety monitoring
-            self.shared_data["safety_warning"], self.shared_data["distance"], \
-            self.shared_data["current_frame"], self.shared_data["current_depth_frame"], \
-            self.shared_data["terminate"] = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
+        # Run safety monitoring
+        self.shared_data["safety_warning"], self.shared_data["distance"], \
+        self.shared_data["current_frame"], self.shared_data["current_depth_frame"], \
+        self.shared_data["terminate"] = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
 
-            # Check fixtures
-            self.shared_data["fixture_results"] = self.fixture_checker.check_all_patches(
-                self.shared_data["current_frame"],
-                self.shared_data["current_depth_frame"]
-            )
+        # Check fixtures
+        self.shared_data["fixture_results"] = self.fixture_checker.check_all_patches(
+            self.shared_data["current_frame"],
+            self.shared_data["current_depth_frame"]
+        )
 
-            # Adjust robot velocity based on fixture check results and safety warning
-            self.state_machine.change_robot_velocity(
-                self.shared_data["safety_warning"],
-                self.shared_data["fixture_results"],
-                self.shared_data["distance"]
-            )
-            time.sleep(0.01)
-
+        # Adjust robot velocity based on fixture check results and safety warning
+        self.state_machine.change_robot_velocity(
+            self.shared_data["safety_warning"],
+            self.shared_data["fixture_results"],
+            self.shared_data["distance"]
+        )
 
     def process_state_machine(self):
+        """This function runs in a separate process."""
         while not self.shared_data["terminate"]:
+            print(self.shared_data["fixture_results"])
+        
             # Process state machine logic if fixture results are available
-            if self.shared_data["fixture_results"]:
+            if np.any(self.shared_data["fixture_results"]):
                 self.state_machine.process_state_machine(
                     self.shared_data["fixture_results"],
                     self.shared_data["current_depth_frame"]
                 )
-            time.sleep(0.01)
-
+            # time.sleep(0.01)
 
     def run(self):
         # Move to home position
         self.robot_controller.moveL(self.home)
 
-        # Start all processes
-        processes = self.start_processes()
+        # Start the process for state machine management
+        state_machine_process = self.start_process()
+
         try:
             while not self.shared_data["terminate"]:
-                time.sleep(0.1)  # Main process idle, waiting for terminate signal
+                # Perform safety monitoring and adjustment within the main process
+                self.monitor_and_adjust()
+                time.sleep(0.1)
         finally:
             self.shared_data["terminate"] = True
-            for process in processes:
-                process.join()  # Ensure all processes are terminated
+            state_machine_process.join()  # Ensure the process is terminated
             self.safety_monitor.stop_monitoring()
             cv2.destroyAllWindows()
 
@@ -102,7 +99,7 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     image_path = os.path.join(current_dir, 'images', 'reference.png')
 
-    # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
+    # Define the patch coordinates (x, y, width, height)
     patch_coords_list = [
         (480, 325, 20, 15), 
         (460, 350, 20, 15), 

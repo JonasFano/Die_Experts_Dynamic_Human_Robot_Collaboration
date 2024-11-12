@@ -12,8 +12,8 @@ class StateMachine:
         self.robot_pose_state = 0 # 0 -> home, 1 -> fixtures, 2 -> place
 
         # self.velocity = {"low": 0.2, "medium": 0.6, "high": 1.4}
-        self.velocity = {"low": 0.1, "medium": 0.4, "high": 1.0}
-        self.acceleration = 1.0
+        self.velocity = {"low": 0.1, "medium": 0.3, "high": 0.3}
+        self.acceleration = 0.1
         self.blend = {"non": 0.0, "large": 0.02}
 
         self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
