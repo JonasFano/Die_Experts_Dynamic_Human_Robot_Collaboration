@@ -93,7 +93,7 @@ class RobotProcessManager:
 def main():
     # Initialize parameters
     robot_ip = "192.168.1.100"
-    safety_distance = 0.5
+    safety_distance = 0.4
     home_pose = np.array([-0.14066618616650417, -0.1347854199496408, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
 
     current_dir = os.path.dirname(os.path.abspath(__file__))

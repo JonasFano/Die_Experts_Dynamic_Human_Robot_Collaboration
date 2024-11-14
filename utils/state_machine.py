@@ -10,6 +10,7 @@ class StateMachine:
         self.terminate = False
         self.num_points_interp = 20
         self.robot_pose_state = 0 # 0 -> home, 1 -> fixtures, 2 -> place
+        self.save_fixture_nr = []
 
         # self.velocity = {"low": 0.2, "medium": 0.6, "high": 1.4}
         self.velocity = {"low": 0.1, "medium": 0.3, "high": 0.3}
@@ -64,30 +65,37 @@ class StateMachine:
             case 0:  # State for fixture 1
                 print("State 1")
                 self._handle_fixture_1()
+                self.save_fixture_nr.append(1)
 
             case 1:  # State for fixture 2
                 print("State 2")
                 self._handle_fixture_2()
+                self.save_fixture_nr.append(2)
 
             case 2:  # State for fixture 3
                 print("State 3")
                 self._handle_fixture_3()
+                self.save_fixture_nr.append(3)
             
             case 3:  # State for fixture 4
                 print("State 4")
                 self._handle_fixture_4()
+                self.save_fixture_nr.append(4)
 
             case 4:  # State for fixture 5
                 print("State 5")
                 self._handle_fixture_5()
+                self.save_fixture_nr.append(5)
 
             case 5:  # State for fixture 6
                 print("State 6")
                 self._handle_fixture_6()
+                self.save_fixture_nr.append(6)
 
             case 6:  # State for moving from fixtures to place position
                 print("State 7")
                 self._handle_movement_to_place()
+                self.save_fixture_nr.append(7)
 
             case 1000: # Camera calibration state for checking fixture detection
                 self._check_fixtures(fixture_results)
@@ -95,6 +103,7 @@ class StateMachine:
 
             case _:  # Initial state
                 self._decide_next_state(fixture_results)
+                self.save_fixture_nr.append(8)
 
 
         if self.state == 6:
@@ -118,10 +127,14 @@ class StateMachine:
             case 0: # Above pick up component
                 self.robot_controller.open_gripper()
 
+                print("Handling fixtures")
+
                 if self.robot_controller.moveL_path(path_intermediate_to_fixture):
                     self.small_state += 1
             case 1: # Pick up component
                 self.robot_controller.open_gripper()
+
+                print("Handling fixtures 2")
 
                 if self.robot_controller.moveL(pose_fixture + self.lower_offset, velocity=self.velocity["low"]):
                     self.small_state += 1

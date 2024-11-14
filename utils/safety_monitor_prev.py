@@ -12,8 +12,9 @@ class RobotSafetyMonitor:
         self.sphere_center_home = [-0.53615, -0.11935, 1.23248]
         self.sphere_center_place = [-0.15476, 0.1909, 0.91111]
         self.robot_pose_state = 0 # 0 -> home, 1 -> fixtures, 2 -> place
+        self.min_distance_array = []
 
-        self.sphere_radius = 0.5
+        self.sphere_radius = 0.2
         self.pipeline = rs.pipeline()
         self.config = rs.config()
 
@@ -62,14 +63,13 @@ class RobotSafetyMonitor:
 
 
     def monitor_safety(self, patch_coords_list):
-        """Runs the main loop for safety monitoring."""
+        """Runs the main loop for safety monitoring and returns the minimum distance to the sphere."""
         if self.robot_pose_state == 1:
             self.sphere_center = self.sphere_center_fixtures
-        if self.robot_pose_state == 2:
+        elif self.robot_pose_state == 2:
             self.sphere_center = self.sphere_center_place
         else:
             self.sphere_center = self.sphere_center_home
-
 
         # Get frames from the RealSense camera
         frames = self.pipeline.wait_for_frames()
@@ -79,7 +79,7 @@ class RobotSafetyMonitor:
         color_frame = aligned_frames.get_color_frame()
 
         if not depth_frame or not color_frame:
-            return 0
+            return float('inf')  # No frames available, return a large distance
 
         # Convert RealSense frames to numpy arrays
         color_image = np.asanyarray(color_frame.get_data())
@@ -89,8 +89,8 @@ class RobotSafetyMonitor:
         rgb_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
         results = self.pose.process(rgb_image)
 
+        min_distance = float('inf')  # Initialize min_distance with a high value
         too_close = False
-        distance = 0
         height, width, _ = color_image.shape
 
         if results.pose_landmarks:
@@ -108,10 +108,10 @@ class RobotSafetyMonitor:
 
             # Check distance for each human landmark
             for id, landmark in enumerate(results.pose_landmarks.landmark):
-                if(id >=24):#ignore legs
+                if id >= 24:  # Ignore leg landmarks
                     break
 
-                cx,cy = self.filter.filter((landmark.x, landmark.y))
+                cx, cy = self.filter.filter((landmark.x, landmark.y))
                 cx = int(cx * width)
                 cy = int(cy * height)
 
@@ -121,11 +121,12 @@ class RobotSafetyMonitor:
                     human_coords = rs.rs2_deproject_pixel_to_point(depth_intrin, [cx, cy], depth_value)
 
                     distance = self.calculate_distance_to_sphere(human_coords)
+                    min_distance = min(min_distance, distance)  # Track the minimum distance
 
                     # Display the distance for each landmark
                     cv2.putText(color_image, f"D:{distance:.2f}m", (cx, cy),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
-            
+
                     # Check if robot is too close to human
                     if distance < self.safety_distance:
                         too_close = True
@@ -141,13 +142,11 @@ class RobotSafetyMonitor:
             x, y, w, h = patch_coords
             cv2.rectangle(color_image, (x, y), (x + w, y + h), colors[i], 2)
 
-
         # Draw the vertical line in the middle of the image, showing only the bottom 20 pixels
         center_x = width // 2
         line_start_y = height - 50  # Start 20 pixels from the bottom
         line_end_y = height          # End at the bottom of the image
         cv2.line(color_image, (center_x, line_start_y), (center_x, line_end_y), (255, 0, 0), 2)  # Blue line
-
 
         # Display the image
         cv2.imshow('Pose Detection', color_image)
@@ -157,8 +156,11 @@ class RobotSafetyMonitor:
             terminate = True
         else:
             terminate = False
-        
-        return too_close, distance, cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY), depth_image, terminate
+
+        self.min_distance_array.append(min_distance)
+
+        return too_close, min_distance, cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY), depth_image, terminate
+
 
 
 if __name__ == "__main__":

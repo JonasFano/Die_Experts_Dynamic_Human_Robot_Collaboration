@@ -27,6 +27,11 @@ class RobotController:
         """Get the current TCP (Tool Center Point) pose."""
         return self.rtde_r.getActualTCPPose()
     
+    def get_tcp_velocity(self):
+        """Get the current TCP (Tool Center Point) speed in cartesian coordinates."""
+        # self.rtde_r.getSpeedScaling()
+        return self.rtde_r.getActualTCPSpeed()
+    
     def get_actual_joint_positions(self):
         """Get the actual joint positions of the robot."""
         return np.degrees(self.rtde_r.getActualQ())
