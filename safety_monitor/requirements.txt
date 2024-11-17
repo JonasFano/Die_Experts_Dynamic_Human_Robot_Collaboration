@@ -1,0 +1,9 @@
+pyrealsense2
+pyqt5
+pyqtgraph
+opencv-python
+mediapipe
+numpy
+requests
+aiohttp
+asyncio

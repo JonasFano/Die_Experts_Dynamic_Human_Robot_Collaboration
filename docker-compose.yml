@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  safety_monitor:
+    build:
+      context: ./safety_monitor
+    devices:
+      - "/dev/video0:/dev/video0"  # Assuming /dev/video0 is your camera in the container
+    privileged: true  # Needed for device access
+    container_name: safety_monitor
+    ports:
+      - "5001:5001"
+    networks:
+      - robot_network
+
+networks:
+  robot_network:

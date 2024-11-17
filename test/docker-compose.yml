@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    environment:
+      - DISPLAY=host.docker.internal:0
+    volumes:
+      - .:/app
+
+  server:
+    build:
+      context: .
+    container_name: server
+    networks:
+      - app_network
+    ports:
+      - "65432:65432"  # Expose server port for external testing
+    command: ["python", "server.py"]  # Run the server program
+
+  client:
+    build:
+      context: .
+    container_name: client
+    networks:
+      - app_network
+    depends_on:
+      - server  # Ensure the server is started before the client
+    command: ["python", "client.py"]  # Run the client program
+
+networks:
+  app_network:
