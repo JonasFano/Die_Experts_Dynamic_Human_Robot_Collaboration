@@ -29,7 +29,6 @@ def main():
     safety_monitor = RobotSafetyMonitor(safety_distance)
     fixture_checker = CheckFixtures(patch_coords_list, image_path)
     state_machine = StateMachine(robot_controller, safety_monitor, fixture_checker)
-
     # Move to home position
     robot_controller.move_to_position(home_q_deg)
     # robot_controller.move_to_cartesian_pose(home_pose)

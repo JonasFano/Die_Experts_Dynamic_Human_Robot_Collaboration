@@ -1,12 +1,14 @@
 import numpy as np
 import math
 from utils.interpolate import interpolate_tcp_poses
+from logging import Logger
 
 class StateMachine:
     def __init__(self, robot_controller, safety_monitor, fixture_checker):
         self.robot_controller = robot_controller
         self.safety_monitor = safety_monitor
         self.fixture_checker = fixture_checker
+        self.logger = Logger(log_dir="logs")
         self.small_state = 0
         self.state = 1000 # Type 1000 for calibration
         self.terminate = False
@@ -54,6 +56,7 @@ class StateMachine:
         else:
             speed_fraction = 0.5
         self.robot_controller.set_robot_velocity(speed_fraction)
+        self.logger.log("Speed",speed_fraction)
 
 
     def process_state_machine(self):
@@ -63,10 +66,10 @@ class StateMachine:
             tcp_pose = self.robot_controller.get_tcp_pose()
             self.safety_monitor.set_robot_tcp(tcp_pose)
             safety_warning, distance, current_frame, current_depth_frame, self.terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
-
+            self.logger.log("Distance",distance)
             # Check fixtures
             fixture_results = self.fixture_checker.check_all_patches(current_frame, current_depth_frame)
-
+            self.logger.log("Fixture_result",fixture_results)
             # Determine velocity
             self.change_robot_velocity(safety_warning, fixture_results, distance)
 
