@@ -1,4 +1,4 @@
-#{import cv2
+#import cv2
 #import numpy as np
 #import os
 #from utils.robot_controller import RobotController
@@ -45,7 +45,7 @@
 #
 #
 #if __name__ == "__main__":
-#    main()}
+#    main()
 
 # In main.py
 
@@ -188,31 +188,6 @@ def main():
 
     # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
     patch_coords_list = [
-<<<<<<< HEAD
-        (485, 345, 20, 15), # Component 1
-        (465, 365, 20, 15), # Component 2
-        (440, 395, 20, 15), # Component 3
-        (415, 420, 20, 15), # Component 4
-    ]
-
-    # Initialize components
-    robot_controller = RobotController(robot_ip)
-    safety_monitor = RobotSafetyMonitor(safety_distance)
-    fixture_checker = CheckFixtures(patch_coords_list, image_path)
-    state_machine = StateMachine(robot_controller, safety_monitor, fixture_checker)
-    # Move to home position
-    robot_controller.move_to_position(home_q_deg)
-    # robot_controller.move_to_cartesian_pose(home_pose)
-
-    try:
-        # Start the state machine process
-        # state_machine.process_state_machine_pose()
-        state_machine.process_state_machine()
-    finally:
-        # Stop monitoring and clean up
-        safety_monitor.stop_monitoring()
-        cv2.destroyAllWindows()
-=======
         (480, 325, 20, 15), 
         (460, 350, 20, 15), 
         (435, 375, 20, 15), 
@@ -222,7 +197,6 @@ def main():
     # Initialize and run the manager
     manager = RobotProcessManager(robot_ip, safety_distance, home_pose, patch_coords_list, image_path)
     manager.run()
->>>>>>> threading
 
 
 if __name__ == "__main__":

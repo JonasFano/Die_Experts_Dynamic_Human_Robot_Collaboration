@@ -29,11 +29,7 @@ class StateMachine:
         self.pose_fixture_6 = np.array([])
 
         self.upper_offset = np.array([0.0, 0.0, 0.15, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
-<<<<<<< HEAD
-        self.lower_offset = np.array([0.0, 0.0, -0.04, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
-=======
         self.lower_offset = np.array([0.0, 0.0, -0.1, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
->>>>>>> threading
 
         self.path_to_place = self.create_blended_path(self.pose_intermediate, self.pose_place, num_points=self.num_points_interp+10, fixed_end=True)
         self.path_back_to_intermediate = self.create_blended_path(self.pose_place, self.pose_intermediate, num_points=self.num_points_interp, fixed_end=True)
@@ -67,19 +63,6 @@ class StateMachine:
 
     def process_state_machine(self, fixture_results, current_depth_frame):
         """Process the state machine to control robot behavior."""
-<<<<<<< HEAD
-        while not self.terminate:
-            # Monitor safety
-            tcp_pose = self.robot_controller.get_tcp_pose()
-            self.safety_monitor.set_robot_tcp(tcp_pose)
-            safety_warning, distance, current_frame, current_depth_frame, self.terminate = self.safety_monitor.monitor_safety(self.fixture_checker.patch_coords_list)
-            self.logger.log("Distance",distance)
-            # Check fixtures
-            fixture_results = self.fixture_checker.check_all_patches(current_frame, current_depth_frame)
-            self.logger.log("Fixture_result",fixture_results)
-            # Determine velocity
-            self.change_robot_velocity(safety_warning, fixture_results, distance)
-=======
         # Handle state transitions
         match self.state:
             case 0:  # State for fixture 1
@@ -101,7 +84,6 @@ class StateMachine:
                 print("State 4")
                 self._handle_fixture_4()
                 self.save_fixture_nr.append(4)
->>>>>>> threading
 
             case 4:  # State for fixture 5
                 print("State 5")
