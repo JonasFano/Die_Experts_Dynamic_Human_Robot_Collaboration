@@ -1,56 +1,62 @@
 import numpy as np
-import math
 from utils.interpolate import interpolate_tcp_poses
 from logging import Logger
 
 class StateMachine:
-    def __init__(self, robot_controller, safety_monitor, fixture_checker):
+    def __init__(self, robot_controller, fixture_checker):
         self.robot_controller = robot_controller
-        self.safety_monitor = safety_monitor
         self.fixture_checker = fixture_checker
         self.logger = Logger(log_dir="logs")
         self.small_state = 0
-        self.state = 1000 # Type 1000 for calibration
+        self.state = 100 # Type 1000 for calibration
         self.terminate = False
+        self.num_points_interp = 20
+        self.robot_pose_state = 0 # 0 -> home, 1 -> fixtures, 2 -> place
+        self.save_fixture_nr = []
 
-        self.velocity = {"low": 0.2, "medium": 0.6, "high": 1.4}
-        self.acceleration = 1.0
-        self.blend = {"non": 0.0, "large": 0.07}
+        # self.velocity = {"low": 0.2, "medium": 0.6, "high": 1.4}
+        self.velocity = {"low": 0.1, "medium": 0.3, "high": 0.3}
+        self.acceleration = 0.1
+        self.blend = {"non": 0.0, "large": 0.02}
 
-        self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.5007059810407316, -0.290828921105704, 3.1229774522374507, 0.021559598658174906])
-        self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.29148843827639254, -0.7137182724185805, -3.0211880976990457, -0.0527401049100824])
-        self.pose_fixture_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.20364282861631133, -1.7173584058437448, 2.614817123624442, 0.015662793265223476]) # Above pick up 1. component
-        self.pose_fixture_2 = np.array([-0.07957651394105475, -0.5775855654308832, 0.2023741615008534, -1.7060825343589325, 2.614852489706341, 0.022595902601295428])  # Above pick up 2. component
-        self.pose_fixture_3 = np.array([-0.04925448702503588, -0.5082985306025327, 0.1936708406298164, -1.7261076468170813, 2.623645026630323, 0.0023482443015084543])  # Above pick up 3. component
-        self.pose_fixture_4 = np.array([-0.025557349301992764, -0.44688229341926045, 0.2003871289944606, -1.7245031583352266, 2.6246444976427994, 0.002526657100955647])  # Above pick up 4. component
+        self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
+        self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.28, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
+        self.pose_fixture_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.25, -1.7173584058437448, 2.614817123624442, 0.015662793265223476]) # Above pick up 1. component
+        self.pose_fixture_2 = np.array([-0.07957651394105475, -0.5775855654308832, 0.25, -1.7060825343589325, 2.614852489706341, 0.022595902601295428])  # Above pick up 2. component
+        self.pose_fixture_3 = np.array([-0.04925448702503588, -0.5082985306025327, 0.25, -1.7261076468170813, 2.623645026630323, 0.0023482443015084543])  # Above pick up 3. component
+        self.pose_fixture_4 = np.array([-0.025557349301992764, -0.44688229341926045, 0.25, -1.7245031583352266, 2.6246444976427994, 0.002526657100955647])  # Above pick up 4. component
         self.pose_fixture_5 = np.array([])
         self.pose_fixture_6 = np.array([])
 
         self.upper_offset = np.array([0.0, 0.0, 0.15, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is further up than self.pose_fixture_n for lifting
+<<<<<<< HEAD
         self.lower_offset = np.array([0.0, 0.0, -0.04, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
+=======
+        self.lower_offset = np.array([0.0, 0.0, -0.1, 0.0, 0.0, 0.0]) # Offset that is added to self.pose_fixture_n to have a point that is lower than self.pose_fixture_n for grasping
+>>>>>>> threading
 
-        self.path_to_place = self.create_blended_path(self.pose_intermediate, self.pose_place, num_points=20, fixed_end=True)
-        self.path_back_to_intermediate = self.create_blended_path(self.pose_place, self.pose_intermediate, num_points=20, fixed_end=False)
+        self.path_to_place = self.create_blended_path(self.pose_intermediate, self.pose_place, num_points=self.num_points_interp+10, fixed_end=True)
+        self.path_back_to_intermediate = self.create_blended_path(self.pose_place, self.pose_intermediate, num_points=self.num_points_interp, fixed_end=True)
 
-        self.path_lift_component_1 = self.create_blended_path(self.pose_fixture_1, self.pose_fixture_1 + self.upper_offset, num_points=5, fixed_end=False) # Path from fixture base pose to upper pose to lift component
-        self.path_lift_component_2 = self.create_blended_path(self.pose_fixture_2, self.pose_fixture_2 + self.upper_offset, num_points=5, fixed_end=False)
-        self.path_lift_component_3 = self.create_blended_path(self.pose_fixture_3, self.pose_fixture_3 + self.upper_offset, num_points=5, fixed_end=False)
-        self.path_lift_component_4 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=5, fixed_end=False)
-        self.path_lift_component_5 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=5, fixed_end=False) # Needs to be adjusted for new components
-        self.path_lift_component_6 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=5, fixed_end=False)
+        self.path_lift_component_1 = self.create_blended_path(self.pose_fixture_1, self.pose_fixture_1 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True) # Path from fixture base pose to upper pose to lift component
+        self.path_lift_component_2 = self.create_blended_path(self.pose_fixture_2, self.pose_fixture_2 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
+        self.path_lift_component_3 = self.create_blended_path(self.pose_fixture_3, self.pose_fixture_3 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
+        self.path_lift_component_4 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
+        self.path_lift_component_5 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True) # Needs to be adjusted for new components
+        self.path_lift_component_6 = self.create_blended_path(self.pose_fixture_4, self.pose_fixture_4 + self.upper_offset, num_points=self.num_points_interp, fixed_end=True)
 
-        self.intermediate_to_fixture_1 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_1, num_points=20, fixed_end=True)
-        self.intermediate_to_fixture_2 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_2, num_points=20, fixed_end=True)
-        self.intermediate_to_fixture_3 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_3, num_points=20, fixed_end=True)
-        self.intermediate_to_fixture_4 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=20, fixed_end=True)
-        self.intermediate_to_fixture_5 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=20, fixed_end=True) # Needs to be adjusted for new components
-        self.intermediate_to_fixture_6 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=20, fixed_end=True)
+        self.intermediate_to_fixture_1 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_1, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_2 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_2, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_3 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_3, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_4 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=self.num_points_interp, fixed_end=True)
+        self.intermediate_to_fixture_5 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=self.num_points_interp, fixed_end=True) # Needs to be adjusted for new components
+        self.intermediate_to_fixture_6 = self.create_blended_path(self.pose_intermediate, self.pose_fixture_4, num_points=self.num_points_interp, fixed_end=True)
 
 
     def change_robot_velocity(self, safety_warning, fixture_results, distance):
         """Adjust robot velocity based on safety warnings and fixture detection."""
         if safety_warning:
-            speed_fraction = 0.3 * distance
+            speed_fraction = 0.3 # * distance
         elif np.any(fixture_results == 1):
             speed_fraction = 1.0
         else:
@@ -59,8 +65,9 @@ class StateMachine:
         self.logger.log("Speed",speed_fraction)
 
 
-    def process_state_machine(self):
+    def process_state_machine(self, fixture_results, current_depth_frame):
         """Process the state machine to control robot behavior."""
+<<<<<<< HEAD
         while not self.terminate:
             # Monitor safety
             tcp_pose = self.robot_controller.get_tcp_pose()
@@ -72,43 +79,67 @@ class StateMachine:
             self.logger.log("Fixture_result",fixture_results)
             # Determine velocity
             self.change_robot_velocity(safety_warning, fixture_results, distance)
+=======
+        # Handle state transitions
+        match self.state:
+            case 0:  # State for fixture 1
+                print("State 1")
+                self._handle_fixture_1()
+                self.save_fixture_nr.append(1)
 
-            # Handle state transitions
-            match self.state:
-                case 0:  # State for fixture 1
-                    print("State 1")
-                    self._handle_fixture_1()
+            case 1:  # State for fixture 2
+                print("State 2")
+                self._handle_fixture_2()
+                self.save_fixture_nr.append(2)
 
-                case 1:  # State for fixture 2
-                    print("State 2")
-                    self._handle_fixture_2()
+            case 2:  # State for fixture 3
+                print("State 3")
+                self._handle_fixture_3()
+                self.save_fixture_nr.append(3)
+            
+            case 3:  # State for fixture 4
+                print("State 4")
+                self._handle_fixture_4()
+                self.save_fixture_nr.append(4)
+>>>>>>> threading
 
-                case 2:  # State for fixture 3
-                    print("State 3")
-                    self._handle_fixture_3()
-                
-                case 3:  # State for fixture 4
-                    print("State 4")
-                    self._handle_fixture_4()
+            case 4:  # State for fixture 5
+                print("State 5")
+                self._handle_fixture_5()
+                self.save_fixture_nr.append(5)
 
-                case 4:  # State for fixture 5
-                    print("State 5")
-                    self._handle_fixture_5()
+            case 5:  # State for fixture 6
+                print("State 6")
+                self._handle_fixture_6()
+                self.save_fixture_nr.append(6)
 
-                case 5:  # State for fixture 6
-                    print("State 6")
-                    self._handle_fixture_6()
+            case 6:  # State for moving from fixtures to place position
+                print("State 7")
+                self._handle_movement_to_place()
+                self.save_fixture_nr.append(7)
 
-                case 6:  # State for moving from fixtures to place position
-                    print("State 7")
-                    self._handle_movement_to_place()
+            case 1000: # Camera calibration state for checking fixture detection
+                self._check_fixtures(fixture_results)
+                self.fixture_checker.calibrate_depth(current_depth_frame)
 
-                case 1000: # Camera calibration state for checking fixture detection
-                    self._check_fixtures(fixture_results)
-                    self.fixture_checker.calibrate_depth(current_depth_frame)
+            case _:  # Initial state
+                self._decide_next_state(fixture_results)
+                self.save_fixture_nr.append(8)
 
-                case _:  # Initial state
-                    self._decide_next_state(fixture_results)
+
+        if self.state == 6:
+            if self.small_state == 0:
+                self.robot_pose_state = 1 # fixtures
+            elif self.small_state == 1 or self.small_state == 4:
+                self.robot_pose_state = 0 # home
+            elif self.small_state >= 2 and self.small_state <= 3:
+                self.robot_pose_state = 2 # place
+        elif self.state < 6:
+            self.robot_pose_state = 1 # fixtures
+        else:
+            self.robot_pose_state = 0 # home
+        
+        return self.robot_pose_state
 
 
     def _handle_fixtures(self, pose_fixture, path_intermediate_to_fixture, path_lift_component):
@@ -117,12 +148,16 @@ class StateMachine:
             case 0: # Above pick up component
                 self.robot_controller.open_gripper()
 
+                print("Handling fixtures")
+
                 if self.robot_controller.moveL_path(path_intermediate_to_fixture):
                     self.small_state += 1
             case 1: # Pick up component
                 self.robot_controller.open_gripper()
 
-                if self.robot_controller.moveL(pose_fixture - self.lower_offset, velocity=self.velocity["low"]):
+                print("Handling fixtures 2")
+
+                if self.robot_controller.moveL(pose_fixture + self.lower_offset, velocity=self.velocity["low"]):
                     self.small_state += 1
             case 2: # Close gripper
                 if self.robot_controller.close_gripper():
@@ -244,9 +279,10 @@ class StateMachine:
         # Create a blended path that includes TCP positions in radians along with velocity, acceleration, and blend radius
         blended_path = []
         
-        for pos_deg in interpolated_points:
-            pos_rad = [math.radians(deg) for deg in pos_deg]
-            blended_path.append(pos_rad + [velocity, acceleration, blend])  # Append velocity, acceleration, and blend
+        for pose in interpolated_points:
+            blended_path.append(pose + [velocity, acceleration, blend])  # Append velocity, acceleration, and blend
+
+        # blended_path.append(end_pose.tolist() + [velocity, acceleration, blend])
 
         # Check if we need to adjust the last element
         if fixed_end:
@@ -261,7 +297,7 @@ class StateMachine:
         match self.small_state:
             case 0:
                 # Create blended paths
-                self.path_to_intermediate = self.create_blended_path(self.robot_controller.get_tcp_pose(), self.pose_intermediate, num_points=20, fixed_end=False)
+                self.path_to_intermediate = self.create_blended_path(self.robot_controller.get_tcp_pose(), self.pose_intermediate, num_points=self.num_points_interp, fixed_end=True)
                 self.small_state += 1
             case 1:
                 # From actual to intermediate point

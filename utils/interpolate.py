@@ -57,6 +57,7 @@ def interpolate_tcp_poses(pose_start, pose_end, num_points=10):
 
 
 
+
 if __name__ == "__main__":
     # Example usage: Joint positions in degrees
     q_start = [69.07, -79.10, 78.95, 271.52, 270.26, 272.43]  # Example: start joint positions (in degrees)
