@@ -23,6 +23,7 @@ const props = defineProps<{
   labels?: string[]
 }>()
 
+
 const chartData = computed<ChartData<'line'>>(() => {
   return {
     labels: ["", "", "", "", "", "", "", "", "", ""],
@@ -43,10 +44,11 @@ const chartOptions: ChartOptions<'line'> = {
 </script>
 
 <template>
-  <div class="max-h-[400px]">
+  <div>
     <Line
       :data="chartData"
       :options="chartOptions"
+      height="200"
     />
   </div>
 </template>
