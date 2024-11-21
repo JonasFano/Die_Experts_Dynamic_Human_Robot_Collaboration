@@ -1,5 +1,28 @@
 from .safety_minitor import SafetyFrameResults, SafetyMonitor, PATCH_COORDS_LIST
+from concurrent.futures import ThreadPoolExecutor
 import Queue
+
+
+def add_frames_to_queues(m: SafetyMonitor, pool: ThreadPoolExecutor, qdistance, qimage):
+    frames = m.get_frames()
+
+    # Send distance job to the pool
+    pool.submit(
+        DistanceJob,
+        args=(
+            frames,
+            qdistance,
+        ),
+    )
+
+    # Send image job to the pool
+    pool.submit(
+        ImageStreamJob,
+        args=(
+            frames,
+            qimage,
+        ),
+    )
 
 
 def DistanceJob(s: SafetyFrameResults, q: Queue) -> None:
