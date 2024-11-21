@@ -3,9 +3,10 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import math
-from utils.abfilter import ABFilter
+from abfilter import ABFilter
 from dataclasses import dataclass
 from typing import NamedTuple, List
+import time
 
 PATCH_COORDS_LIST = [
     (166, 203, 18, 12),  # Component 1
@@ -28,6 +29,7 @@ class SafetyMonitor:
     def __init__(
         self, safety_distance=0.5, color_res=(1280, 720), depth_res=(1280, 720), fps=15
     ):
+        print("Starting the monitor")
         self.safety_distance = safety_distance
         self.sphere_center_fixtures = [-0.65887, -0.32279, 1.93131]  # in camera frame
         self.sphere_center_home = [-0.53615, -0.11935, 1.23248]
@@ -55,8 +57,6 @@ class SafetyMonitor:
         self.pose = self.mp_pose.Pose()
         self.mp_drawing = mp.solutions.drawing_utils
 
-        # Start the camera stream
-        self.pipeline.start(self.config)
 
         """
         # Unsure if needed
@@ -66,6 +66,11 @@ class SafetyMonitor:
         """
 
         self.filter = ABFilter(alpha=0.1, beta=0.05, dt=1 / 30)
+        print("Done starting the monitor")
+
+    def start(self):
+        # Start the camera stream
+        self.pipeline.start(self.config)
 
     def stop_monitoring(self):
         """Stop the pipeline."""
@@ -86,13 +91,12 @@ class SafetyMonitor:
         distance_to_surface = abs(distance_to_center - self.sphere_radius)
         return distance_to_surface
 
-    @staticmethod
     def apply_landmark_overlay(self, color_img: np.ndarray, poses: NamedTuple) -> None:
         """If landmarks present, draw landmark pose markers onto an image"""
         if poses.pose_landmarks:
             self.mp_drawing.draw_landmarks(
                 color_img,
-                poses.pose_landmarks,
+                posesmp_pose.pose_landmarks,
                 self.mp_pose.POSE_CONNECTIONS,
                 self.mp_drawing.DrawingSpec(
                     color=(0, 255, 0), thickness=4, circle_radius=5
@@ -102,16 +106,15 @@ class SafetyMonitor:
                 ),
             )
 
-    @staticmethod
     def calculate_human_robot_distance(
-        self, poses: NamedTuple, color_frame: rs.color_frame, color_image: np.ndarray
+        self, poses: NamedTuple, depth_frame: rs.depth_frame, color_image: np.ndarray
     ) -> float:
         """Calculate the minimum distance between the human and the robot"""
         min_distance = float("inf")
         if poses.pose_landmarks:
             height, width, _ = color_image.shape
 
-            depth_intrin = color_frame.profile.as_video_stream_profile().intrinsics
+            depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
 
             # Check distance for each human landmark
             for id, landmark in enumerate(poses.pose_landmarks.landmark):
@@ -124,7 +127,7 @@ class SafetyMonitor:
 
                 # Ensure the coordinates are within the bounds of the image
                 if 0 <= cx < width and 0 <= cy < height:
-                    depth_value = color_frame.get_distance(cx, cy)
+                    depth_value = depth_frame.get_distance(cx, cy)
                     human_coords = rs.rs2_deproject_pixel_to_point(
                         depth_intrin, [cx, cy], depth_value
                     )
@@ -136,7 +139,6 @@ class SafetyMonitor:
 
         return min_distance
 
-    @staticmethod
     def calculate_poses(self, color_image: np.ndarray) -> NamedTuple:
         rgb_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
         return self.pose.process(
@@ -144,7 +146,6 @@ class SafetyMonitor:
         )  # Used for creating pose overlay, calculating distance between human and robot
 
     # TODO: What is this used for?
-    @staticmethod
     def apply_some_graphic(
         self, color_image: np.ndarray, patch_coords_list: List[List[float]]
     ) -> None:
@@ -185,12 +186,21 @@ class SafetyMonitor:
             self.sphere_center = self.sphere_center_home
 
         # Get frames from the RealSense camera
-        frames = self.pipeline.wait_for_frames()
+
+        frames = None
+
+        while frames == None:
+            try:
+                frames = self.pipeline.wait_for_frames()
+            except Exception:
+                time.sleep(0.05)
         aligned_frames = self.align.process(frames)
 
         depth_frame = aligned_frames.get_depth_frame()
         color_frame = aligned_frames.get_color_frame()
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
+
+        print("Getting frames")
 
         return SafetyFrameResults(color_frame, color_image, depth_frame, depth_image)
