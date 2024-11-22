@@ -7,6 +7,7 @@ import time
 def add_frames_to_queues(m: SafetyMonitor, qdistance, qimage, executor: ThreadPoolExecutor):
     while True:
         frames = m.get_frames()
+        print(f"Queue size is currently {qimage.qsize()}")
         # Send distance job to the pool
         executor.submit(
             DistanceJob,
@@ -14,6 +15,15 @@ def add_frames_to_queues(m: SafetyMonitor, qdistance, qimage, executor: ThreadPo
             frames,
             qdistance,
         )
+
+        executor.submit(
+            ImageStreamJob,
+            m,
+            frames,
+            qdistance,
+        )
+
+        time.sleep(1/15)
 
 
 
