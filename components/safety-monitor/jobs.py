@@ -6,35 +6,31 @@ import time
 
 def add_frames_to_queues(m: SafetyMonitor, qdistance, qimage, executor: ThreadPoolExecutor):
     while True:
-        frames = m.get_frames()
-        print(f"Queue size is currently {qimage.qsize()}")
-        # Send distance job to the pool
-        executor.submit(
-            DistanceJob,
-            m,
-            frames,
-            qdistance,
-        )
+        try:
+            frames = m.get_frames()
+        except Exception as e:
+            print()
+            print(e)
+            print()
 
-        executor.submit(
-            ImageStreamJob,
-            m,
-            frames,
-            qdistance,
-        )
+        if frames:
+            DistanceJob(
+                m,
+                frames,
+                qdistance
+            )
 
-        time.sleep(1/15)
-
-
+        time.sleep(1/20)
 
 def DistanceJob(m: SafetyMonitor, s: SafetyFrameResults, q: Queue) -> None:
-    print("Starting to calculate distance")
-    poses = m.calculate_poses(s.color_image)
-    distance = m.calculate_human_robot_distance(
-        poses, s.depth_frame, s.color_image
-    )
-    print(distance)
-    q.put(distance)
+    try:
+        poses = m.calculate_poses(s.color_image)
+        distance = m.calculate_human_robot_distance(
+            poses, s.depth_frame, s.color_image
+        )
+        q.put(distance)
+    except Exception as e:
+        print(f"####################{e}")
 
 
 
@@ -80,7 +76,12 @@ def testAsyncThreadPool():
 
 
 
-
-if __name__ == "__main__":
-    testAsyncThreadPool()
 """
+if __name__ == "__main__":
+    m = SafetyMonitor()
+    m.start()
+
+    q1 = Queue()
+    q2 = Queue()
+
+    add_frames_to_queues(m, q1,q2, ThreadPoolExecutor())

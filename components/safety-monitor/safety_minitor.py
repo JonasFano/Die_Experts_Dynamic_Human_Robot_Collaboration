@@ -91,20 +91,18 @@ class SafetyMonitor:
         distance_to_surface = abs(distance_to_center - self.sphere_radius)
         return distance_to_surface
 
-    def apply_landmark_overlay(self, color_img: np.ndarray, poses: NamedTuple) -> None:
+    def apply_landmark_overlay(self, color_image: np.ndarray, results: NamedTuple) -> None:
         """If landmarks present, draw landmark pose markers onto an image"""
-        if poses.pose_landmarks:
+        if results.pose_landmarks:
+            # Draw the landmarks on the image
             self.mp_drawing.draw_landmarks(
-                color_img,
-                posesmp_pose.pose_landmarks,
+                color_image,
+                results.pose_landmarks,
                 self.mp_pose.POSE_CONNECTIONS,
-                self.mp_drawing.DrawingSpec(
-                    color=(0, 255, 0), thickness=4, circle_radius=5
-                ),
-                self.mp_drawing.DrawingSpec(
-                    color=(255, 0, 0), thickness=4, circle_radius=5
-                ),
+                self.mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=4, circle_radius=5),
+                self.mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=4, circle_radius=5),
             )
+            
 
     def calculate_human_robot_distance(
         self, poses: NamedTuple, depth_frame: rs.depth_frame, color_image: np.ndarray
@@ -198,9 +196,8 @@ class SafetyMonitor:
 
         depth_frame = aligned_frames.get_depth_frame()
         color_frame = aligned_frames.get_color_frame()
+
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
-
-        print("Getting frames")
 
         return SafetyFrameResults(color_frame, color_image, depth_frame, depth_image)

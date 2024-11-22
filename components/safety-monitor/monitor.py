@@ -22,8 +22,8 @@ task_pool = None
 # Conncurent thread pooi
 
 # Queues
-DistanceQueue = LifoQueue[float](10)
-ImageStreamQueue = LifoQueue(10)
+DistanceQueue = LifoQueue(0)
+ImageStreamQueue = LifoQueue()
 
 
 class BackgroundTasks(threading.Thread):
@@ -42,22 +42,19 @@ def startup():
     monitor.start()
     monitor_thread.start()
 
-
 #### Api endpoints
 @app.websocket("/distance")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint."""
+    manager = dummy_manager
+    await manager.connect(websocket)
     try:
-        await distance_manager.connect(websocket)
         while True:
-            try:
-                distance = DistanceQueue.get()
-                await distance_manager.broadcast(str(distance))
-            except Exception as e:
-                print(e)
+            await asyncio.sleep(0.01)
+            distance = DistanceQueue.get()
+            await manager.broadcast(str(distance))
     except WebSocketDisconnect:
-        print("Disconnect!")
-        distance_manager.disconnect(websocket)
+        manager.disconnect(websocket)
 
 @app.websocket("/dummy")
 async def dummy_ws_endpoint(websocket: WebSocket):
