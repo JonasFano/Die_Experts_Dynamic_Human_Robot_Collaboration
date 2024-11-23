@@ -1,0 +1,8 @@
+pyrealsense2
+numpy
+PyQt5
+pyqtgraph
+requests
+aiohttp
+opencv-python
+numpy
