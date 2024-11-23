@@ -18,23 +18,43 @@ const toggleFixtures = () => {
   $fetch('http://localhost:5000/toggle_fixtures');
 }
 
+const fetchData = async () => {
+  try {
+    const response = await $fetch('http://localhost:5000/data') as { heartRate: number, distance: number, stress: number };
+    heartRate.value = response.heartRate;
+    safetyDistance.value = response.distance;
+    stressLevel.value = response.stress;
+    addGraphDataPoint(stressLevel.value);
+  } catch (error) {
+    throw new Error('Failed to fetch data: ' + error);
+  }
+}
+
 const graphData = ref<number[]>([])
 
 const lineDatasets = computed<ChartDataset<'line'>[]>(() => [
   {
     data: graphData.value,
     borderColor: "#3182CE",
-    backgroundColor: "#3182CE",
+    backgroundColor: "rgb(49 130 206 / 60%)",
     borderWidth: 4,
     tension: 0.3,
     fill: true,
+    animation: {
+      duration: 100,
+      easing: 'easeInOutQuad'
+    }
   },
 ])
 
-const addDataPoint = () => {
-  const newData = Math.floor(Math.random() * 101) + 50; // Random number between 50 and 150
-  graphData.value = [newData, ...graphData.value].slice(0, 10); // Update the data and keep only the latest 10 points
+const addGraphDataPoint = (data: number) => {
+  //const newData = Math.floor(Math.random() * 101) + 50; // Random number between 50 and 150
+  graphData.value = [data, ...graphData.value].slice(0, 10); // Update the data and keep only the latest 10 points
 };
+
+onMounted(() => {
+  setInterval(fetchData, 1000);
+});
 
 const safetyDistance = ref(0);
 const heartRate = ref(0);
@@ -67,9 +87,8 @@ const stressLevel = ref(0);
         </div>
 
         <div class="p-4 w-full shadow bg-white rounded">
-          <h2 class="font-bold mb-2">Live heart rate data</h2>
+          <h2 class="font-bold mb-2">Stress Level</h2>
           <Graph :datasets="lineDatasets" />
-          <Button @click="addDataPoint" text="Add datapoint" />
         </div>
       </div>
     </div>

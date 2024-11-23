@@ -39,6 +39,12 @@ const chartOptions: ChartOptions<'line'> = {
       display: false,
     },
   },
+  scales: {
+    y: {
+      min: 0,
+      max: 1
+    },
+  }
 }
 
 </script>
