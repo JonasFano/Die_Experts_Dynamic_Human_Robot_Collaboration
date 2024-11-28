@@ -9,9 +9,11 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
+        print("Peer connected")
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
+        print("Peer disconnected")
         self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):

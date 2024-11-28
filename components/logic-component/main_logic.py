@@ -4,6 +4,8 @@ import requests
 import threading
 import time
 import random
+import socket
+
 
 app = Flask(__name__)
 CORS(app) 
@@ -69,8 +71,21 @@ def get_data():
     return jsonify(data_store), 200
 
 
-threading.Thread(target=fetch_heart_rate_periodically, daemon=True).start()
+import websockets
+import asyncio
 
+async def test_client():
+    uri = "ws://127.0.0.1:8000/distance"
+    async with websockets.connect(uri) as websocket:
+        while True:
+            response = await websocket.recv()
+            print(f"Server response: {response}")
+
+
+
+
+#threading.Thread(target=fetch_heart_rate_periodically, daemon=True).start()
+asyncio.run(test_client())
 
 
 if __name__ == '__main__':

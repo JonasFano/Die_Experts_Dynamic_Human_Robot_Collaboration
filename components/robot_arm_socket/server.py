@@ -68,8 +68,6 @@ def set_speed(sid, data):
         i_rtde_io.setSpeedSlider(speed)
     except Exception as e:
         sio.emit(Events.SERVER_MESSAGE.value, {'status': f"Error: {str(e)}"}, to=sid)
-        
-        
 
 
 if __name__ == "__main__":
