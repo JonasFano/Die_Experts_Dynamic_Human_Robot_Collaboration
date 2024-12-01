@@ -20,7 +20,7 @@ const toggleFixtures = () => {
 
 const fetchData = async () => {
   try {
-    const response = await $fetch('http://localhost:5000/data') as { heartRate: number, distance: number, stress: number };
+    const response = await $fetch('http://localhost:8000/data') as { heartRate: number, distance: number, stress: number };
     heartRate.value = response.heartRate;
     safetyDistance.value = response.distance;
     stressLevel.value = response.stress;

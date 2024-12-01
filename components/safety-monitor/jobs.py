@@ -3,15 +3,24 @@ from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 import threading
 import time
+from fixture_checker import CheckFixtures 
 
-def add_frames_to_queues(m: SafetyMonitor, qdistance, qimage, executor: ThreadPoolExecutor):
+
+ref_img_path = 'images/reference.png'
+paths = [(485, 345, 20, 15), # Component 1
+    (465, 365, 20, 15), # Component 2
+    (440, 395, 20, 15), # Component 3
+    (415, 420, 20, 15)] # Component 4
+fixture_checker = CheckFixtures(paths, ref_img_path)
+
+FixtureStatusQueue = Queue()
+
+def add_frames_to_queues(m: SafetyMonitor, qdistance, qimage,  executor: ThreadPoolExecutor):
     while True:
         try:
             frames = m.get_frames()
         except Exception as e:
-            print()
             print(e)
-            print()
 
         if frames:
             DistanceJob(
@@ -19,6 +28,16 @@ def add_frames_to_queues(m: SafetyMonitor, qdistance, qimage, executor: ThreadPo
                 frames,
                 qdistance
             )
+
+        if frames:
+            ImageStreamJob(m, frames, qimage)
+        
+        # Calculate 1 or 0 values of if a fixture is in the fixture holder or not.
+
+        fixtures = fixture_checker.check_all_patches(frames.color_image, frames.depth_image)
+        v = ",".join(map(lambda x: str(x), fixtures))
+        FixtureStatusQueue.put(v)
+
 
         time.sleep(1/20)
 
@@ -36,7 +55,6 @@ def DistanceJob(m: SafetyMonitor, s: SafetyFrameResults, q: Queue) -> None:
 
 def ImageStreamJob(m: SafetyMonitor, s: SafetyFrameResults, q: Queue) -> None:
     # Copy the image array to ensure no race condition/mutation errors
-    print("Creating image with overlay")
     color_image = s.color_image.copy()
     poses = m.calculate_poses(color_image)
     m.apply_landmark_overlay(color_image, poses)

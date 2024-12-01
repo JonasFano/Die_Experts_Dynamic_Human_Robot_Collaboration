@@ -187,7 +187,7 @@ class SafetyMonitor:
 
         frames = None
 
-        while frames == None:
+        while frames is None:
             try:
                 frames = self.pipeline.wait_for_frames()
             except Exception:
