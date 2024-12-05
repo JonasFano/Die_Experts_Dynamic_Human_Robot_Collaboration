@@ -219,3 +219,11 @@ if __name__ == "__main__":
 
     while True:
         monitor.monitor_safety(patch_coords_list)
+
+    
+
+if __name__ == "__main__":
+    s = RobotSafetyMonitor()
+    
+    while True:
+        s.monitor_safety()

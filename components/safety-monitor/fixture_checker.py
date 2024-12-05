@@ -166,7 +166,8 @@ class CheckFixtures:
         - current_depth_image: Depth image with/without the object (numpy array).
         """
         # Create an empty list to store the results
-        results = []
+
+        #results = []
 
         # Iterate over each patch in the list of patch coordinates with index
         for patch_idx, patch_coords in enumerate(self.patch_coords_list):
@@ -191,6 +192,8 @@ class CheckFixtures:
         # Create an empty list to store the results
         results = []
 
+        current_image = cv2.cvtColor(current_image, cv2.COLOR_RGB2GRAY)
+
         # Iterate over each patch in the list of patch coordinates
         for patch_coords in self.patch_coords_list:
             # Call the function to check if the object is in the patch
@@ -203,7 +206,7 @@ class CheckFixtures:
             results.append(patch_status)
         
         # Convert the results list to a numpy array and return
-        return np.array(results)
+        return results
 
 
     @staticmethod
@@ -247,7 +250,7 @@ class CheckFixtures:
 if __name__ == "__main__":
     # Assuming the images are loaded externally and passed as numpy arrays
     # You can capture these from a camera or any other image acquisition system
-    reference_image = cv2.imread('../images/reference.png', cv2.IMREAD_GRAYSCALE)  # Load reference image from camera or input
+    reference_image = cv2.imread('images/reference.png', cv2.IMREAD_GRAYSCALE)  # Load reference image from camera or input
 
     
     # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
@@ -265,16 +268,11 @@ if __name__ == "__main__":
     patch_coords_list = [patch_coords_1, patch_coords_2, patch_coords_3, patch_coords_4]
 
     ref_img_path = 'images/reference.png'
-    ref_img_path2 = 'images/reference2.png'
-    check_fixtures = CheckFixtures(patch_coords_list, ref_img_path2)
+    check_fixtures = CheckFixtures(patch_coords_list, ref_img_path)
 
 
     # CheckFixtures.visualize(current_image, patch_coords_3)
     # check_fixtures.visualize_all_patches(current_image)
-
-
-
-    check_fixtures.calibrate_depth()
     check_fixtures.visualize_all_patches(reference_image)
 
     # Check if objects are detected in all patches
@@ -290,4 +288,3 @@ if __name__ == "__main__":
                 print(f"No object detected in {patch}.")
     except Exception:
         print("No image to compare to")
-        

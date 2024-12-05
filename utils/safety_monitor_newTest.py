@@ -4,23 +4,18 @@ import mediapipe as mp
 import numpy as np
 import math
 from abfilter import ABFilter
-from typing import Union, Tuple
-
-from mediapipe.framework.formats import landmark_pb2
-
 
 class RobotSafetyMonitor:
     def __init__(self, safety_distance=0.5, color_res=(1280, 720), depth_res=(1280, 720), fps=15):
         self.safety_distance = safety_distance
-        self.sphere_center_fixtures = [-0.72302, -0.42781, 2.03305] # in camera frame
-        self.sphere_center_home = [-0.48186, -0.11395, 1.00219]
-        self.sphere_center_place = [-0.48186, -0.11395, 1.40219]
-
-
-        self.robot_pose_state = 0 # 0 -> home, 1 -> fixtures, 2 -> place
+        # Sphere center positions based on different robot states
+        self.sphere_center_fixtures = [-0.65887, -0.32279, 1.93131]  # in camera frame
+        self.sphere_center_home = [-0.53615, -0.11935, 1.23248]
+        self.sphere_center_place = [-0.15476, 0.1909, 0.91111]
+        self.robot_pose_state = 0  # 0 -> home, 1 -> fixtures, 2 -> place
         self.min_distance_array = []
 
-        self.sphere_radius = 0.05
+        self.sphere_radius = 0.2  # Safety sphere radius
         self.pipeline = rs.pipeline()
         self.config = rs.config()
 
@@ -41,15 +36,13 @@ class RobotSafetyMonitor:
 
         # Set up OpenCV window
         cv2.namedWindow('Pose Detection', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('Pose Detection', 1280, 720)
+        cv2.resizeWindow('Pose Detection', 1920, 1080)
 
-        self.filter = ABFilter(alpha=0.1,beta=0.05,dt=1/30)
-
+        self.filter = ABFilter(alpha=0.1, beta=0.05, dt=1 / 30)
 
     def stop_monitoring(self):
         """Stop the pipeline."""
         self.pipeline.stop()
-
 
     @staticmethod
     def calculate_distance(point1, point2):
@@ -60,43 +53,15 @@ class RobotSafetyMonitor:
             (point1[2] - point2[2]) ** 2
         )
 
-
     def calculate_distance_to_sphere(self, point):
         """Calculate distance from a point to the surface of the sphere."""
         distance_to_center = np.linalg.norm(np.array(point) - self.sphere_center)
         distance_to_surface = abs(distance_to_center - self.sphere_radius)
         return distance_to_surface
 
-    def _normalized_to_pixel_coordinates(
-        normalized_x: float, normalized_y: float, image_width: int,
-        image_height: int) -> Union[None, Tuple[int, int]]:
-        """Converts normalized value pair to pixel coordinates."""
-
-        # Checks if the float value is between 0 and 1.
-        def is_valid_normalized_value(value: float) -> bool:
-            return (value > 0 or math.isclose(0, value)) and (value < 1 or
-                                                            math.isclose(1, value))
-
-        if not (is_valid_normalized_value(normalized_x) and
-                is_valid_normalized_value(normalized_y)):
-            # TODO: Draw coordinates even if it's outside of the image bounds.
-            return None
-        x_px = min(math.floor(normalized_x * image_width), image_width - 1)
-        y_px = min(math.floor(normalized_y * image_height), image_height - 1)
-        return x_px, y_px
-    
-    def draw_tcp_on_image(self, tcp_coords, depth_intrin, color_image):
-        """Draws the TCP on the image at the correct pixel coordinates."""
-        tcp_pixel_coords = rs.rs2_project_point_to_pixel(depth_intrin, tcp_coords)
-        tcp_x, tcp_y = int(tcp_pixel_coords[0]), int(tcp_pixel_coords[1])
-        height, width, _ = color_image.shape
-
-        if 0 <= tcp_x < width and 0 <= tcp_y < height:
-            cv2.circle(color_image, (tcp_x, tcp_y), 10, (0, 0, 255), -1)  # Red circle
-            cv2.putText(color_image, "TCP", (tcp_x + 15, tcp_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-
     def monitor_safety(self, patch_coords_list):
         """Runs the main loop for safety monitoring and returns the minimum distance to the sphere."""
+        # Update sphere center based on robot pose state
         if self.robot_pose_state == 1:
             self.sphere_center = self.sphere_center_fixtures
         elif self.robot_pose_state == 2:
@@ -126,57 +91,42 @@ class RobotSafetyMonitor:
         too_close = False
         height, width, _ = color_image.shape
 
-
-        hcx = int(abs(self.sphere_center_home[0] * width))
-        hcy = int(abs(self.sphere_center_home[1] * height))
-
-        print((hcx,hcy))
-
-        cv2.circle(color_image, (100,100), 10, (0,0,255), 1)
-
         if results.pose_landmarks:
-            # Draw the landmarks on the image
-            self.mp_drawing.draw_landmarks(
-                color_image,
-                results.pose_landmarks,
-                self.mp_pose.POSE_CONNECTIONS,
-                self.mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=3),
-                self.mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=3),
-            )
+            # Draw only the upper body landmarks (avoid legs and below)
+            for id, landmark in enumerate(results.pose_landmarks.landmark):
+                if id < 24:  # Only draw landmarks up to the torso (exclude legs)
+                    self.mp_drawing.draw_landmarks(
+                        color_image,
+                        results.pose_landmarks,
+                        self.mp_pose.POSE_CONNECTIONS,
+                        self.mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=4, circle_radius=5),
+                        self.mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=4, circle_radius=5),
+                    )
 
-            # Get robot TCP coordinates
             depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
 
-
-            # Check distance for each human landmark
+            # Check distance for each human landmark (excluding legs and below)
             for id, landmark in enumerate(results.pose_landmarks.landmark):
-                if id >= 24:  # Ignore leg landmarks
-                    break
+                if id >= 24:  # Skip leg landmarks and below (legs start at index 24)
+                    continue
 
-                #cx, cy = self.filter.filter((landmark.x, landmark.y))
-
-                cx = min(math.floor(landmark.x* width), width - 1)
-                cy = min(math.floor(landmark.y* height), height - 1)
-
-                #cx = int(cx * width)
-                #cy = int(cy * height)
-                
+                cx, cy = self.filter.filter((landmark.x, landmark.y))
+                cx = int(cx * width)
+                cy = int(cy * height)
 
                 # Ensure the coordinates are within the bounds of the image
                 if 0 <= cx < width and 0 <= cy < height:
                     depth_value = depth_frame.get_distance(cx, cy)
                     human_coords = rs.rs2_deproject_pixel_to_point(depth_intrin, [cx, cy], depth_value)
 
-                    self.draw_tcp_on_image(self.sphere_center, depth_intrin, color_image)
-
+                    # Calculate the distance from human landmark to safety sphere
                     distance = self.calculate_distance_to_sphere(human_coords)
                     min_distance = min(min_distance, distance)  # Track the minimum distance
 
                     # Display the distance for each landmark
-                    cv2.putText(color_image, f"D:{distance:0.2f}m", (cx, cy),
+                    cv2.putText(color_image, f"D:{distance:.2f}m", (cx, cy),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
 
-                    #print(distance)
                     # Check if robot is too close to human
                     if distance < self.safety_distance:
                         too_close = True
@@ -185,7 +135,7 @@ class RobotSafetyMonitor:
                 print("Robot too close to human! Slowing down...")
 
         # Colors for each patch (you can customize the colors for each rectangle)
-        colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]  # Green, Blue, Red, Yellow
+        colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0)]  # Green, Blue, Red, Yellow
 
         # Draw rectangles for each patch
         for i, patch_coords in enumerate(patch_coords_list):
@@ -196,7 +146,7 @@ class RobotSafetyMonitor:
         center_x = width // 2
         line_start_y = height - 50  # Start 20 pixels from the bottom
         line_end_y = height          # End at the bottom of the image
-        cv2.line(color_image, (center_x, line_start_y), (center_x, line_end_y), (245, 66, 209), 4)    # Blue line
+        cv2.line(color_image, (center_x, line_start_y), (center_x, line_end_y), (255, 0, 0), 2)  # Blue line
 
         # Display the image
         cv2.imshow('Pose Detection', color_image)
@@ -212,18 +162,15 @@ class RobotSafetyMonitor:
         return too_close, min_distance, cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY), depth_image, terminate
 
 
-
 if __name__ == "__main__":
-    s = RobotSafetyMonitor()
+    monitor = RobotSafetyMonitor(safety_distance=0.5)
 
     patch_coords_list = [
-        (335, 365, 20, 15), 
-        (295, 390, 20, 15), 
-        (260, 415, 20, 15), 
-        (225, 445, 20, 15),
-        (195, 500, 20, 15),
-        (160, 525, 20, 15),
+        (166, 203, 18, 12), # Component 1
+        (152, 223, 18, 12), 
+        (133, 243, 18, 12), 
+        (113, 265, 18, 12) # Component 4
     ]
 
     while True:
-        s.monitor_safety(patch_coords_list)
+        monitor.monitor_safety(patch_coords_list)
