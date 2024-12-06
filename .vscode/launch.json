@@ -1,0 +1,15 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Client.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/henriko/Documents/project/Die_Experts_Dynamic_Human_Robot_Collaboration/components/safety-monitor/socket-robot-controller/client.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}
