@@ -7,6 +7,8 @@ from abfilter import ABFilter
 from dataclasses import dataclass
 from typing import NamedTuple, List
 import time
+from robot_controller import RobotController
+from tcp_calculations import calculate_camera_tcp_coords
 
 PATCH_COORDS_LIST = [
     (166, 203, 18, 12),  # Component 1
@@ -36,10 +38,11 @@ class SafetyMonitor:
         self.sphere_center_place = [-0.15476, 0.1909, 0.91111]
         self.robot_pose_state = 0  # 0 -> home, 1 -> fixtures, 2 -> place
         self.min_distance_array = []
-
+        self.robot_controller = RobotController("192.168.1.100")
         self.sphere_radius = 0.2
         self.pipeline = rs.pipeline()
         self.config = rs.config()
+
 
         # Configure the RealSense camera streams
         self.config.enable_stream(
@@ -57,6 +60,8 @@ class SafetyMonitor:
         self.pose = self.mp_pose.Pose()
         self.mp_drawing = mp.solutions.drawing_utils
 
+        cv2.namedWindow('Pose Detection', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('Pose Detection', 1280, 720)
 
         """
         # Unsure if needed
@@ -91,7 +96,9 @@ class SafetyMonitor:
         distance_to_surface = abs(distance_to_center - self.sphere_radius)
         return distance_to_surface
 
-    def apply_landmark_overlay(self, color_image: np.ndarray, results: NamedTuple) -> None:
+    def apply_landmark_overlay(
+        self, color_image: np.ndarray, results: NamedTuple
+    ) -> None:
         """If landmarks present, draw landmark pose markers onto an image"""
         if results.pose_landmarks:
             # Draw the landmarks on the image
@@ -99,11 +106,54 @@ class SafetyMonitor:
                 color_image,
                 results.pose_landmarks,
                 self.mp_pose.POSE_CONNECTIONS,
-                self.mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=4, circle_radius=5),
-                self.mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=4, circle_radius=5),
+                self.mp_drawing.DrawingSpec(
+                    color=(0, 255, 0), thickness=4, circle_radius=5
+                ),
+                self.mp_drawing.DrawingSpec(
+                    color=(255, 0, 0), thickness=4, circle_radius=5
+                ),
             )
         return color_image
-            
+
+
+    def rotation_matrix_from_euler_XYZ(self, roll, pitch, yaw, degrees=False):
+        """
+        Creates a rotation matrix from roll, pitch, and yaw (Euler angles).
+
+        Parameters:
+        roll (float): Rotation around the X-axis.
+        pitch (float): Rotation around the Y-axis.
+        yaw (float): Rotation around the Z-axis.
+        degrees (bool): If True, the angles are in degrees. Otherwise, in radians.
+
+        Returns:
+        numpy.ndarray: A 3x3 rotation matrix.
+        """
+        if degrees:
+            roll = np.radians(roll)
+            pitch = np.radians(pitch)
+            yaw = np.radians(yaw)
+
+        # Rotation matrix around X-axis (roll)
+        Rx = np.array(
+            [[1, 0, 0], [0, np.cos(roll), -np.sin(roll)], [0, np.sin(roll), np.cos(roll)]]
+        )
+
+        # Rotation matrix around Y-axis (pitch)
+        Ry = np.array(
+            [
+                [np.cos(pitch), 0, np.sin(pitch)],
+                [0, 1, 0],
+                [-np.sin(pitch), 0, np.cos(pitch)],
+            ]
+        )
+
+        # Rotation matrix around Z-axis (yaw)
+        Rz = np.array(
+            [[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]]
+        )
+
+        return Rz @ Ry @ Rx  # Combined rotation matrix: R = Rz * Ry * Rx
 
     def calculate_human_robot_distance(
         self, poses: NamedTuple, depth_frame: rs.depth_frame, color_image: np.ndarray
@@ -130,13 +180,29 @@ class SafetyMonitor:
                     human_coords = rs.rs2_deproject_pixel_to_point(
                         depth_intrin, [cx, cy], depth_value
                     )
-
-                    distance = self.calculate_distance_to_sphere(human_coords)
+                    
+                    tcp_coords = calculate_camera_tcp_coords(self.robot_controller.get_tcp_pose())
+                    distance = math.dist(human_coords, tcp_coords[:3])
                     min_distance = min(
                         min_distance, distance
                     )  # Track the minimum distance
 
+        print(f"Distance: {min_distance}")
+
         return min_distance
+
+    @staticmethod
+    def draw_tcp_on_image(tcp_coords, depth_intrin, color_image):
+        """Draws the TCP on the image at the correct pixel coordinates."""
+        tcp_pixel_coords = rs.rs2_project_point_to_pixel(depth_intrin, tcp_coords)
+        tcp_x, tcp_y = int(tcp_pixel_coords[0]), int(tcp_pixel_coords[1])
+        height, width, _ = color_image.shape
+
+        if 0 <= tcp_x < width and 0 <= tcp_y < height:
+            cv2.circle(color_image, (tcp_x, tcp_y), 10, (0, 0, 255), -1)  # Red circle
+            cv2.putText(color_image, "TCP", (tcp_x + 15, tcp_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+
 
     def calculate_poses(self, color_image: np.ndarray) -> NamedTuple:
         rgb_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
@@ -198,8 +264,19 @@ class SafetyMonitor:
         depth_frame = aligned_frames.get_depth_frame()
         color_frame = aligned_frames.get_color_frame()
 
+
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
+        
+        human_poses = self.calculate_poses(color_image)
+        
+        self.calculate_human_robot_distance(human_poses, depth_frame, color_image)
+        color_image = self.apply_landmark_overlay(color_image, human_poses)
+
+        tcp_coords = calculate_camera_tcp_coords(self.robot_controller.get_tcp_pose())
+        depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
+        color_image = self.draw_tcp_on_image(tcp_coords[:3], depth_intrin, color_image)
+
 
         return SafetyFrameResults(color_frame, color_image, depth_frame, depth_image)
 
@@ -208,12 +285,14 @@ if __name__ == "__main__":
     s = SafetyMonitor()
     s.start()
 
-    while True:
-        frames = s.get_frames()
+    try:
+        while True:
+            frames = s.get_frames()
+            rgb_color = frames.color_image
+            cv2.imshow("Pose Detection", np.asanyarray(frames.color_frame.get_data()))
+            cv2.waitKey(1)
 
-        rgb_color = frames.color_image
-
-
-        cv2.imshow("color image", rgb_color)
-        cv2.waitKey()
-        
+    except KeyboardInterrupt:
+        s.robot_controller.rtde_c.disconnect()
+        s.robot_controller.rtde_r.disconnect()
+        s.robot_controller.rtde_io.disconnect()

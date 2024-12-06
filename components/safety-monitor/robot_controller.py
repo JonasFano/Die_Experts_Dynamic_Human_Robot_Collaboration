@@ -80,9 +80,3 @@ class RobotController:
         acceleration: Desired acceleration for the movement.
         """
         return self.rtde_c.moveL(target_pose, speed=velocity, acceleration=acceleration)
-    
-    def set_free_move(self, enable):
-        if enable:
-            self.rtde_r.freedriveMode()
-        else:
-            self.rtde_r.endFreedriveMode()

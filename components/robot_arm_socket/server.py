@@ -95,6 +95,11 @@ def get_status(sid):
 
     sio.emit(Events.SERVER_MESSAGE.value, {"running": running, "value": operation}, to=sid)
 
+@sio.on(Events.GET_TCP_VALUE.value)
+def get_tcp_value(sid):
+    sio.emit(Events.SERVER_MESSAGE.value, {"tcp_pose": rtde_receive.getActualTCPPose()})
+
+
 if __name__ == "__main__":
     import eventlet
     import eventlet.wsgi

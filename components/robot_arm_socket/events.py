@@ -11,6 +11,7 @@ class Events(Enum):
     JOINT_POSITIONS = "joint_positions"
     IS_RUNNING = "is_running"
     SPEED_VALUE = "speed_value"
+    GET_TCP_VALUE = "get_tcp_value"
 
 menu_options: Dict[int, str] = {
     0: "Disconnect",

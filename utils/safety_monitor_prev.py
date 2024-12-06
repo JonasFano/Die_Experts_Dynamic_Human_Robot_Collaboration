@@ -95,6 +95,126 @@ class RobotSafetyMonitor:
             cv2.circle(color_image, (tcp_x, tcp_y), 10, (0, 0, 255), -1)  # Red circle
             cv2.putText(color_image, "TCP", (tcp_x + 15, tcp_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
+    def rotation_matrix_from_euler_XYZ(roll, pitch, yaw, degrees=False):
+        """
+        Creates a rotation matrix from roll, pitch, and yaw (Euler angles).
+
+        Parameters:
+        roll (float): Rotation around the X-axis.
+        pitch (float): Rotation around the Y-axis.
+        yaw (float): Rotation around the Z-axis.
+        degrees (bool): If True, the angles are in degrees. Otherwise, in radians.
+
+        Returns:
+        numpy.ndarray: A 3x3 rotation matrix.
+        """
+        if degrees:
+            roll = np.radians(roll)
+            pitch = np.radians(pitch)
+            yaw = np.radians(yaw)
+        
+        # Rotation matrix around X-axis (roll)
+        Rx = np.array([
+            [1, 0, 0],
+            [0, np.cos(roll), -np.sin(roll)],
+            [0, np.sin(roll), np.cos(roll)]
+        ])
+        
+        # Rotation matrix around Y-axis (pitch)
+        Ry = np.array([
+            [np.cos(pitch), 0, np.sin(pitch)],
+            [0, 1, 0],
+            [-np.sin(pitch), 0, np.cos(pitch)]
+        ])
+        
+        # Rotation matrix around Z-axis (yaw)
+        Rz = np.array([
+            [np.cos(yaw), -np.sin(yaw), 0],
+            [np.sin(yaw), np.cos(yaw), 0],
+            [0, 0, 1]
+        ])
+        
+        return Rz @ Ry @ Rx # Combined rotation matrix: R = Rz * Ry * Rx
+
+    def transform_R(self, rotation, degrees=False):
+        """
+        Creates a 6x6 transformation matrix for rotational motion.
+
+        Parameters:
+        rotation (tuple): A tuple (roll, pitch, yaw) for the rotation in radians (or degrees if specified).
+        degrees (bool): Set to True if the rotation angles are given in degrees.
+
+        Returns:
+        numpy.ndarray: A 6x6 transformation matrix.
+        """
+        # Convert Euler angles to a 3x3 rotation matrix
+        R = self.rotation_matrix_from_euler_XYZ(*rotation, degrees=degrees)
+
+        # Create the 6x6 transformation matrix
+        R_mat = np.zeros((6, 6))  # Initialize a 6x6 matrix of zeros
+        R_mat[:3, :3] = R         # Top-left 3x3 block is R
+        R_mat[3:, 3:] = R         # Bottom-right 3x3 block is R
+
+        return R_mat
+
+    def set_robot_tcp(self, b_p_tcp):
+        """Sets the TCP coordinates with respect to the camera frame"""
+        w_t_b = np.array([-0.276, 0.024, -0.035, 0, 0, 0]) # Translation (x, y, z)
+        w_R_b = transform_R([0, 180, 67.5], degrees=True)  # Rotation (roll, pitch, yaw) in degrees
+
+        w_p_tcp = w_R_b @ b_p_tcp + w_t_b # Transforming tcp into world frame
+
+        #Camera transform
+        c_T_w = np.array([[ 0.51970216,  0.854174,    0.01645907, -0.53570101],
+                        [-0.59055939,  0.34525865,  0.72936413,  0.40769184],
+                        [ 0.61733134, -0.38878397,  0.68387034,  1.36497584],
+                        [ 0,           0,           0,           1,        ]])
+        c_R_w = np.zeros((6, 6))
+        c_R_w[:3, :3] = c_T_w[:3,:3]
+        c_R_w[3:, 3:] = c_T_w[:3,:3]
+        c_t_w = np.zeros(6)
+        c_t_w[:3] = c_T_w[:3, 3]
+
+        c_p_tcp = c_R_w @ w_p_tcp + c_t_w # Transforming tcp into camera frame
+
+        self.tcp_coords = c_p_tcp[:3]
+
+    def calculate_human_robot_distance(
+        self, poses, depth_frame, color_image
+    ):
+        """Calculate the minimum distance between the human and the robot"""
+        min_distance = float("inf")
+        if poses.pose_landmarks:
+            height, width, _ = color_image.shape
+
+            depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
+
+            # Check distance for each human landmark
+            for id, landmark in enumerate(poses.pose_landmarks.landmark):
+                if id >= 24:  # Ignore leg landmarks
+                    break
+
+                cx, cy = self.filter.filter((landmark.x, landmark.y))
+                cx = int(cx * width)
+                cy = int(cy * height)
+
+                # Ensure the coordinates are within the bounds of the image
+                if 0 <= cx < width and 0 <= cy < height:
+                    depth_value = depth_frame.get_distance(cx, cy)
+                    human_coords = rs.rs2_deproject_pixel_to_point(
+                        depth_intrin, [cx, cy], depth_value
+                    )
+
+                    self.set_robot_tcp(self.robot_controller.get_tcp_pose())
+                    distance = math.dist(human_coords, self.tcp_coords)
+                    min_distance = min(
+                        min_distance, distance
+                    )  # Track the minimum distance
+
+        print(f"Distance: {min_distance}")
+
+        return min_distance
+
     def monitor_safety(self, patch_coords_list):
         """Runs the main loop for safety monitoring and returns the minimum distance to the sphere."""
         if self.robot_pose_state == 1:
@@ -169,7 +289,7 @@ class RobotSafetyMonitor:
 
                     self.draw_tcp_on_image(self.sphere_center, depth_intrin, color_image)
 
-                    distance = self.calculate_distance_to_sphere(human_coords)
+                    distance = self.calculate_human_robot_distance(landmark.poses, depth_frame, )
                     min_distance = min(min_distance, distance)  # Track the minimum distance
 
                     # Display the distance for each landmark
