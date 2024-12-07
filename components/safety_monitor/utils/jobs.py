@@ -63,6 +63,7 @@ def add_frames_to_queues(m: SafetyMonitor, verbose: bool = False):
             print(f"Raised in add_to_frames: {e}")
 
         time.sleep(1/20)
+        
 def DistanceJob(m: SafetyMonitor, s: SafetyFrameResults, q) -> None:
     try:
         poses = m.calculate_poses(s.color_image)

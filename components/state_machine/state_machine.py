@@ -31,9 +31,9 @@ class StateMachine:
                 print(f"Failed to connect to fixture socket: {e}")
                 input("Waiting for key..")
 
-        self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
-        self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.28, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])
-        self.pose_fixture_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.25, -1.7173584058437448, 2.614817123624442, 0.015662793265223476]) # Above pick up 1. component
+        self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, 0.669, 3.068, 0.00])
+        self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.28, 0.669, 3.068, 0.00])
+        self.pose_fixture_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.25, 0.669, 3.068, 0.00]) # Above pick up 1. component
         self.pose_fixture_2 = np.array([-0.07957651394105475, -0.5775855654308832, 0.25, -1.7060825343589325, 2.614852489706341, 0.022595902601295428])  # Above pick up 2. component
         self.pose_fixture_3 = np.array([-0.04925448702503588, -0.5082985306025327, 0.25, -1.7261076468170813, 2.623645026630323, 0.0023482443015084543])  # Above pick up 3. component
         self.pose_fixture_4 = np.array([-0.025557349301992764, -0.44688229341926045, 0.25, -1.7245031583352266, 2.6246444976427994, 0.002526657100955647])  # Above pick up 4. component
@@ -203,33 +203,33 @@ class StateMachine:
 
     def _handle_fixture_1(self):
         """Handle logic for fixture 1."""
-        # pose_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.20364282861631133, -1.7173584058437448, 2.614817123624442, 0.015662793265223476]) # Above pick up 1. component
-        # pose_2 = np.array([-0.10927225089149672, -0.638808684706488, 0.16189487119823975, -1.7171870780646261, 2.614478233276138, 0.015947482150488666]) # Pick up 1. component
-        # pose_3 = np.array([-0.11426353877896417, -0.6367850021118604, 0.37342196534573907, -1.7172805001473428, 2.614861661856344, 0.01562220979246864]) # Above pick up 1. component when grasped
+        # pose_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.20364282861631133, 0.669, 3.068, 0.00]) # Above pick up 1. component
+        # pose_2 = np.array([-0.10927225089149672, -0.638808684706488, 0.16189487119823975, 0.669, 3.068, 0.00]) # Pick up 1. component
+        # pose_3 = np.array([-0.11426353877896417, -0.6367850021118604, 0.37342196534573907, 0.669, 3.068, 0.00]) # Above pick up 1. component when grasped
         self._handle_fixtures(self.pose_fixture_1, self.intermediate_to_fixture_1, self.path_lift_component_1)                
 
 
     def _handle_fixture_2(self):
         """Handle logic for fixture 2."""
-        # pose_1 = np.array([-0.07957651394105475, -0.5775855654308832, 0.2023741615008534, -1.7060825343589325, 2.614852489706341, 0.022595902601295428])  # Above pick up 2. component
-        # pose_2 = np.array([-0.0794715050646689, -0.5763134771536808, 0.15689830700328303, -1.7062760747070256, 2.614848580062184, 0.02276340968191546]) # Pick up 2. component
-        # pose_3 = np.array([-0.07961487102277967, -0.5776175305046732, 0.36997942349606483, -1.7059307001537876, 2.614718091511983, 0.022713872557162004]) # Above pick up 2. component when grasped
+        # pose_1 = np.array([-0.07957651394105475, -0.5775855654308832, 0.2023741615008534, 0.669, 3.068, 0.00])  # Above pick up 2. component
+        # pose_2 = np.array([-0.0794715050646689, -0.5763134771536808, 0.15689830700328303, ]) # Pick up 2. component
+        # pose_3 = np.array([-0.07961487102277967, -0.5776175305046732, 0.36997942349606483, 0.669, 3.068, 0.00]) # Above pick up 2. component when grasped
         self._handle_fixtures(self.pose_fixture_2, self.intermediate_to_fixture_2, self.path_lift_component_2) 
 
 
     def _handle_fixture_3(self):
         """Handle logic for fixture 3."""
-        # pose_1 = np.array([-0.04925448702503588, -0.5082985306025327, 0.1936708406298164, -1.7261076468170813, 2.623645026630323, 0.0023482443015084543])  # Above pick up 3. component
-        # pose_2 = np.array([-0.04922361412155398, -0.5082741917115655, 0.1574407674565033, -1.7265598120065448, 2.623701513754936, 0.0022291121420809964]) # Pick up 3. component
-        # pose_3 = np.array([-0.04933753474346547, -0.5083689053674434, 0.36860275233554163, -1.7258038337871062, 2.623673826634714, 0.0024556181851659044]) # Above pick up 3. component when grasped
+        # pose_1 = np.array([-0.04925448702503588, -0.5082985306025327, 0.1936708406298164, 0.669, 3.068, 0.00])  # Above pick up 3. component
+        # pose_2 = np.array([-0.04922361412155398, -0.5082741917115655, 0.1574407674565033, 0.669, 3.068, 0.00]) # Pick up 3. component
+        # pose_3 = np.array([-0.04933753474346547, -0.5083689053674434, 0.36860275233554163, 0.669, 3.068, 0.00]) # Above pick up 3. component when grasped
         self._handle_fixtures(self.pose_fixture_3, self.intermediate_to_fixture_3, self.path_lift_component_3) 
 
 
     def _handle_fixture_4(self):
         """Handle logic for fixture 4."""
-        # pose_1 = np.array([-0.025557349301992764, -0.44688229341926045, 0.2003871289944606, -1.7245031583352266, 2.6246444976427994, 0.002526657100955647])  # Above pick up 4. component
-        # pose_2 = np.array([-0.024614733648472432, -0.44811676404310946, 0.15400051180951044, -1.7248856208975198, 2.6250816985232532, 0.0021132655857843247]) # Pick up 4. component
-        # pose_3 = np.array([-0.025528569271143754, -0.44697782277537473, 0.368303731431036, -1.7246152624556719, 2.6244098807794094, 0.0025722110232124845]) # Above pick up 4. component when grasped
+        # pose_1 = np.array([-0.025557349301992764, -0.44688229341926045, 0.2003871289944606, 0.669, 3.068, 0.00])  # Above pick up 4. component
+        # pose_2 = np.array([-0.024614733648472432, -0.44811676404310946, 0.15400051180951044, 0.669, 3.068, 0.00]) # Pick up 4. component
+        # pose_3 = np.array([-0.025528569271143754, -0.44697782277537473, 0.368303731431036, 0.669, 3.068, 0.00]) # Above pick up 4. component when grasped
         self._handle_fixtures(self.pose_fixture_4, self.intermediate_to_fixture_4, self.path_lift_component_4) 
 
 
