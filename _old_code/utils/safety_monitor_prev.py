@@ -189,6 +189,7 @@ class RobotSafetyMonitor:
 
             depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
 
+
             # Check distance for each human landmark
             for id, landmark in enumerate(poses.pose_landmarks.landmark):
                 if id >= 24:  # Ignore leg landmarks
