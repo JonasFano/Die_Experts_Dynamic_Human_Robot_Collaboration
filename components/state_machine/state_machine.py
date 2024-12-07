@@ -1,11 +1,11 @@
 import numpy as np
-from interpolate import interpolate_tcp_poses
-from ilogging import CustomLogger
 from websocket import create_connection
 import requests
 from typing import List
 
-from robot_controller import RobotController
+#from robot_controller import RobotController
+from shared.interpolate import interpolate_tcp_poses
+from shared.ilogging import CustomLogger
 
 class StateMachine:
     def __init__(self, robot_controller):
@@ -28,7 +28,7 @@ class StateMachine:
                 self.fixture_socket = create_connection("ws://127.0.0.1:8000/fixtures")
                 break
             except Exception as e:
-                print(f"Failed to connect to socket: {e}")
+                print(f"Failed to connect to fixture socket: {e}")
                 input("Waiting for key..")
 
         self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, -1.7173584058437448, 2.614817123624442, 0.015662793265223476])

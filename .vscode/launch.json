@@ -5,6 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug components.safety_monitor",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/components",
+            "module": "safety_monitor"
+        },
+        {
+            "name": "Debug components.state_machine",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/components",
+            "module": "state_machine"
+        },
+        {
+            "name": "Debug fixture_checker",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/components",
+            "module": "safety_monitor.utils.fixture_checker"
+        },
+        {
             "name": "Python Debugger: Client.py",
             "type": "debugpy",
             "request": "launch",
