@@ -3,7 +3,7 @@ from websocket import create_connection
 import requests
 from typing import List
 
-#from robot_controller import RobotController
+from socket_robot_controller.client import RobotSocketClient
 from shared.interpolate import interpolate_tcp_poses
 from shared.ilogging import CustomLogger
 
@@ -34,9 +34,9 @@ class StateMachine:
         self.pose_intermediate = np.array([-0.14073875492311985, -0.1347932873639663, 0.50, 0.669, 3.068, 0.00])
         self.pose_place = np.array([-0.5765337725404966, 0.24690845869221661, 0.28, 0.669, 3.068, 0.00])
         self.pose_fixture_1 = np.array([-0.11416495380452188, -0.6366095280680834, 0.25, 0.669, 3.068, 0.00]) # Above pick up 1. component
-        self.pose_fixture_2 = np.array([-0.07957651394105475, -0.5775855654308832, 0.25, -1.7060825343589325, 2.614852489706341, 0.022595902601295428])  # Above pick up 2. component
-        self.pose_fixture_3 = np.array([-0.04925448702503588, -0.5082985306025327, 0.25, -1.7261076468170813, 2.623645026630323, 0.0023482443015084543])  # Above pick up 3. component
-        self.pose_fixture_4 = np.array([-0.025557349301992764, -0.44688229341926045, 0.25, -1.7245031583352266, 2.6246444976427994, 0.002526657100955647])  # Above pick up 4. component
+        self.pose_fixture_2 = np.array([-0.07957651394105475, -0.5775855654308832, 0.25, 0.669, 3.068, 0.00])  # Above pick up 2. component
+        self.pose_fixture_3 = np.array([-0.04925448702503588, -0.5082985306025327, 0.25, 0.669, 3.068, 0.00])  # Above pick up 3. component
+        self.pose_fixture_4 = np.array([-0.025557349301992764, -0.44688229341926045, 0.25, 0.669, 3.068, 0.00])  # Above pick up 4. component
         self.pose_fixture_5 = np.array([])
         self.pose_fixture_6 = np.array([])
 
@@ -116,6 +116,7 @@ class StateMachine:
 
             self.robot_controller.set_robot_velocity(self.robot_speed) 
 
+        print(f"Stress level: {result}")
         if self.state == 0:  # State for fixture 1
             print("State 1")
             self._handle_fixture_1()
@@ -173,30 +174,38 @@ class StateMachine:
 
     def _handle_fixtures(self, pose_fixture, path_intermediate_to_fixture, path_lift_component):
         """Handle logic for moving above the pick up position, moving to the pick up position, opening the gripper and moving back up."""
+        
+        print("curr: ", self.robot_controller.get_tcp_pose())
+        print("planned: ", path_intermediate_to_fixture[-1])
+        print("small state: ", self.small_state)
+
         if self.small_state == 0:  # Above pick up component
             self.robot_controller.open_gripper()
             print("Handling fixtures")
         
-        if self.robot_controller.moveL_path(path_intermediate_to_fixture):
-            self.small_state += 1
+            self.robot_controller.moveL_path(path_intermediate_to_fixture)
+            if(np.isclose(self.robot_controller.get_tcp_pose(), path_intermediate_to_fixture[-1][:6], atol=0.001).all()):
+                self.small_state += 1
 
         elif self.small_state == 1:  # Pick up component
             self.robot_controller.open_gripper()
-            print("Handling fixtures 2")
 
-            if self.robot_controller.moveL(pose_fixture + self.lower_offset, velocity=self.velocity["low"]):
+            self.robot_controller.moveL(pose_fixture + self.lower_offset, velocity=self.velocity["low"])
+            if(np.isclose(self.robot_controller.get_tcp_pose(), pose_fixture + self.lower_offset, atol=0.001).all()):
                 self.small_state += 1
 
         elif self.small_state == 2:  # Close gripper
-            if self.robot_controller.close_gripper():
-                self.small_state += 1
+            self.robot_controller.close_gripper()
+            self.small_state += 1
 
         elif self.small_state == 3:  # Above pick up component when grasped
-            if self.robot_controller.moveL(pose_fixture, velocity=self.velocity["low"]):
+            self.robot_controller.moveL(pose_fixture, velocity=self.velocity["low"])
+            if(np.isclose(self.robot_controller.get_tcp_pose(), pose_fixture, atol=0.001).all()):
                 self.small_state += 1
 
         elif self.small_state == 4:  # Further above pick up when grasped
-            if self.robot_controller.moveL_path(path_lift_component):
+            self.robot_controller.moveL_path(path_lift_component)
+            if(np.isclose(self.robot_controller.get_tcp_pose(), path_lift_component[-1][:6], atol=0.003).all()):
                 self.small_state = 0
                 self.state = 6  # Move to place position
 
@@ -330,19 +339,22 @@ class StateMachine:
             self.small_state += 1
         elif self.small_state ==  1:
             # From actual to intermediate point
-            if self.robot_controller.moveL_path(self.path_to_intermediate):
+            self.robot_controller.moveL_path(self.path_to_intermediate)
+            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_to_intermediate[-1][:6], atol=0.001).all()):
                 self.small_state += 1  # Transition to next state
         elif self.small_state ==  2:
             # From intermediate to place point
-            if self.robot_controller.moveL_path(self.path_to_place):
+            self.robot_controller.moveL_path(self.path_to_place)
+            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_to_place[-1][:6], atol=0.001).all()):
                 self.small_state += 1  # Transition to next state
         elif self.small_state ==  3:
             # Open gripper
             if self.robot_controller.open_gripper(): 
                 self.small_state += 1
         elif self.small_state ==  4:
-            # From place to intermediate point
-            if self.robot_controller.moveL_path(self.path_back_to_intermediate):
+            self.robot_controller.moveL_path(self.path_back_to_intermediate)
+            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_back_to_intermediate[-1][:6], atol=0.001).all()):
+                # From place to intermediate point
                 # Reset to initial state
                 self.small_state = 0
                 self.path_index = 0
@@ -354,7 +366,7 @@ if __name__ == "__main__":
     try:
         robot_ip = "192.168.1.100"
         print("Starting robot controller")
-        robot_controller = RobotController(robot_ip)
+        robot_controller = RobotSocketClient(robot_ip)
         print("Starting state machine")
         state_machine = StateMachine(robot_controller)
 

@@ -56,6 +56,7 @@ class RobotMenu:
                         position_index = int(input("Select: "))
                         if position_index == 0:
                             break
+                        print(position_index)
                         print(self.move_to_position(position_index - 1))
                         break
                     except Exception:

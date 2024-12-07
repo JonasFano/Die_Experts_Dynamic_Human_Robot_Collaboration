@@ -84,12 +84,12 @@ class RobotSocketClient:
         return response["positions"]
 
     def moveJ_path(self, path):
-        data = {"position": path}
+        data = {"positions": path}
         response = self.sioc.call(Events.MOVE_TO_POSITION.value, data)
         return response["postions"]
 
     def moveL_path(self, path):
-        data = {"position": path}
+        data = {"positions": path}
         response = self.sioc.call(Events.MOVE_TO_POSITION_L.value, data)
         return response["positions"]
 
@@ -97,10 +97,11 @@ class RobotSocketClient:
         self, target_pose: List[float], velocity: float = 0.2, acceleration: float = 0.3
     ):
         data = {
-            "position": target_pose,
+            "position": target_pose.tolist(),
             "speed": velocity,
             "acceleration": acceleration,
         }
+        
         response = self.sioc.call(Events.MOVE_L_SPEED_ACCEL.value, data)
         return response["positions"]
 
