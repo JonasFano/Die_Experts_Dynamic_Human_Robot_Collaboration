@@ -1,18 +1,24 @@
 import threading
 import time
 from collections import deque
+import pathlib
+import os
 
 from .fixture_checker import CheckFixtures 
 from ..safety_monitor import SafetyFrameResults, SafetyMonitor, PATCH_COORDS_LIST
 from .thread_safe_queue import ThreadSafeQueue
 
-ref_img_path = 'images/reference.png'
-paths = [(485, 345, 20, 15), # Component 1
-    (465, 365, 20, 15), # Component 2
-    (440, 395, 20, 15), # Component 3
-    (415, 420, 20, 15)] # Component 4
+current_file_path = pathlib.Path(__file__).parent.resolve()
+reference_image_path = os.path.join(current_file_path, "images/reference2.png")
 
-fixture_checker = CheckFixtures(paths, ref_img_path)
+patch_coords_list = [
+        (339, 365, 20, 15), # Component 1
+        (299, 393, 20, 15), # Component 2
+        (270, 415, 20, 15), # Component 3
+        (231, 458, 20, 15), # Component 4
+    ]
+
+fixture_checker = CheckFixtures(patch_coords_list, reference_image_path)
 
 FixtureStatusQueue = ThreadSafeQueue(2)
 DistanceQueue = ThreadSafeQueue(2)
@@ -25,8 +31,6 @@ def add_frames_to_queues(m: SafetyMonitor, verbose: bool = False):
             if verbose: 
                 print("Got frames")
 
-            print(1)
-
             if frames:
                 if verbose:
                     print("Running distance job")
@@ -35,7 +39,6 @@ def add_frames_to_queues(m: SafetyMonitor, verbose: bool = False):
                     frames,
                     DistanceQueue
                 )
-            print(2)
 
             if frames:
                 if verbose:
@@ -45,7 +48,7 @@ def add_frames_to_queues(m: SafetyMonitor, verbose: bool = False):
             # Calculate 1 or 0 values of if a fixture is in the fixture holder or not.
             if frames.color_image is not None and frames.depth_image is not None:
                 fixtures = fixture_checker.check_all_patches(frames.color_image, frames.depth_image)
-
+            
             if fixtures is not None:
                 print("Fixtures:")
                 print(fixtures)

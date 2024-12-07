@@ -225,6 +225,7 @@ class CheckFixtures:
             cv2.putText(image, str(i+1), (patch[0], patch[1]-10),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, text_color, 2, cv2.LINE_AA)
 
+        
         self.draw_patches(image)
 
 
@@ -323,13 +324,13 @@ def _main_realsense():
         (339, 365, 20, 15), # Component 1
         (299, 393, 20, 15), # Component 2
         (270, 415, 20, 15), # Component 3
-        (230, 470, 20, 15), # Component 4
+        (231, 458, 20, 15), # Component 4
     ]
 
 
     current_file_path = pathlib.Path(__file__).parent.resolve()
-    reference_image_path = os.path.join(current_file_path, "../images/reference.png")
-    check_fixtures = CheckFixtures(patch_coords_list, reference_image_path)
+    reference_image_path = os.path.join(current_file_path, "images/reference2.png")
+    check_fixtures = CheckFixtures(patch_coords_list, reference_image_path, intensity_threshold=60)
 
 
     while True:
@@ -337,17 +338,25 @@ def _main_realsense():
         aligned_frames = align.process(frames)
 
         color_frame = aligned_frames.get_color_frame()
+        depth_frame = aligned_frames.get_depth_frame()
+
         
         # Convert RealSense frames to numpy arrays
         color_image = np.asanyarray(color_frame.get_data())
-        color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY)
+        depth_image = np.asanyarray(depth_frame.get_data())
+        gray_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2GRAY)
         
         reference_image = cv2.imread(reference_image_path, cv2.IMREAD_GRAYSCALE)  # Load reference image from camera or input
         cv2.imshow("Referemce Image", reference_image)
 
-        check_fixtures.debug_patches(color_image, reference_image, patch_coords_list)
+        check_fixtures.debug_patches(gray_image, reference_image, patch_coords_list)
 
-        cv2.imshow(window_name, color_image)
+        fixture_status = check_fixtures.check_all_patches(color_image, depth_image)
+        cv2.putText(gray_image, str(fixture_status), (100, 300),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2, cv2.LINE_AA)
+
+        #print(check_fixture½s.check_all_patches(color_image, depth_image))
+        cv2.imshow(window_name, gray_image)
         # Being able to read values
         cv2.waitKey(1)
 
