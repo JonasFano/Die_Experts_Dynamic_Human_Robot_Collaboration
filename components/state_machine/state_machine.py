@@ -23,6 +23,7 @@ class StateMachine:
         self.velocity = {"low": 0.1, "medium": 0.3, "high": 0.3}
         self.acceleration = 0.1
         self.blend = {"non": 0.0, "large": 0.02}
+        self.tolerance = 0.004
         while True:
             try:
                 self.fixture_socket = create_connection("ws://127.0.0.1:8000/fixtures")
@@ -176,22 +177,21 @@ class StateMachine:
         """Handle logic for moving above the pick up position, moving to the pick up position, opening the gripper and moving back up."""
         
         print("curr: ", self.robot_controller.get_tcp_pose())
-        print("planned: ", path_intermediate_to_fixture[-1])
+        print("planned: ", path_lift_component[-1])
         print("small state: ", self.small_state)
 
         if self.small_state == 0:  # Above pick up component
             self.robot_controller.open_gripper()
-            print("Handling fixtures")
         
             self.robot_controller.moveL_path(path_intermediate_to_fixture)
-            if(np.isclose(self.robot_controller.get_tcp_pose(), path_intermediate_to_fixture[-1][:6], atol=0.001).all()):
+            if(np.isclose(self.robot_controller.get_tcp_pose(), path_intermediate_to_fixture[-1][:6], atol=self.tolerance).all()):
                 self.small_state += 1
 
         elif self.small_state == 1:  # Pick up component
             self.robot_controller.open_gripper()
 
             self.robot_controller.moveL(pose_fixture + self.lower_offset, velocity=self.velocity["low"])
-            if(np.isclose(self.robot_controller.get_tcp_pose(), pose_fixture + self.lower_offset, atol=0.001).all()):
+            if(np.isclose(self.robot_controller.get_tcp_pose(), pose_fixture + self.lower_offset, atol=self.tolerance).all()):
                 self.small_state += 1
 
         elif self.small_state == 2:  # Close gripper
@@ -200,12 +200,12 @@ class StateMachine:
 
         elif self.small_state == 3:  # Above pick up component when grasped
             self.robot_controller.moveL(pose_fixture, velocity=self.velocity["low"])
-            if(np.isclose(self.robot_controller.get_tcp_pose(), pose_fixture, atol=0.001).all()):
+            if(np.isclose(self.robot_controller.get_tcp_pose(), pose_fixture, atol=self.tolerance).all()):
                 self.small_state += 1
 
         elif self.small_state == 4:  # Further above pick up when grasped
             self.robot_controller.moveL_path(path_lift_component)
-            if(np.isclose(self.robot_controller.get_tcp_pose(), path_lift_component[-1][:6], atol=0.003).all()):
+            if(np.isclose(self.robot_controller.get_tcp_pose(), path_lift_component[-1][:6], atol=self.tolerance).all()):
                 self.small_state = 0
                 self.state = 6  # Move to place position
 
@@ -333,28 +333,32 @@ class StateMachine:
     
     def _handle_movement_to_place(self):
         """Handle logic for moving the grasped component to the place position above the box."""
-        if self.small_state ==  0:
+        if self.small_state == 0:
             # Create blended paths
             self.path_to_intermediate = self.create_blended_path(self.robot_controller.get_tcp_pose(), self.pose_intermediate, num_points=self.num_points_interp, fixed_end=True)
             self.small_state += 1
-        elif self.small_state ==  1:
+
+        elif self.small_state == 1:
             # From actual to intermediate point
             self.robot_controller.moveL_path(self.path_to_intermediate)
-            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_to_intermediate[-1][:6], atol=0.001).all()):
+            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_to_intermediate[-1][:6], atol=self.tolerance).all()):
                 self.small_state += 1  # Transition to next state
-        elif self.small_state ==  2:
+
+        elif self.small_state == 2:
             # From intermediate to place point
             self.robot_controller.moveL_path(self.path_to_place)
-            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_to_place[-1][:6], atol=0.001).all()):
+            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_to_place[-1][:6], atol=self.tolerance).all()):
                 self.small_state += 1  # Transition to next state
-        elif self.small_state ==  3:
+
+        elif self.small_state == 3:
             # Open gripper
             if self.robot_controller.open_gripper(): 
                 self.small_state += 1
-        elif self.small_state ==  4:
+
+        elif self.small_state == 4:
+            # From place to intermediate point
             self.robot_controller.moveL_path(self.path_back_to_intermediate)
-            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_back_to_intermediate[-1][:6], atol=0.001).all()):
-                # From place to intermediate point
+            if(np.isclose(self.robot_controller.get_tcp_pose(), self.path_back_to_intermediate[-1][:6], atol=self.tolerance).all()):
                 # Reset to initial state
                 self.small_state = 0
                 self.path_index = 0
