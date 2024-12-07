@@ -177,7 +177,6 @@ class StateMachine:
         """Handle logic for moving above the pick up position, moving to the pick up position, opening the gripper and moving back up."""
         
         print("curr: ", self.robot_controller.get_tcp_pose())
-        print("planned: ", path_lift_component[-1])
         print("small state: ", self.small_state)
 
         if self.small_state == 0:  # Above pick up component
@@ -205,6 +204,7 @@ class StateMachine:
 
         elif self.small_state == 4:  # Further above pick up when grasped
             self.robot_controller.moveL_path(path_lift_component)
+            print("planned: ", path_lift_component[-1][:6])
             if(np.isclose(self.robot_controller.get_tcp_pose(), path_lift_component[-1][:6], atol=self.tolerance).all()):
                 self.small_state = 0
                 self.state = 6  # Move to place position
