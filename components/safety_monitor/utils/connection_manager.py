@@ -1,4 +1,4 @@
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 from typing import List
 
 
@@ -19,3 +19,10 @@ class ConnectionManager:
     async def broadcast(self, message: str):
         for connection in self.active_connections:
             await connection.send_text(message)
+
+    async def broadcast_bytes(self, bs: bytearray):
+        for connection in self.active_connections:
+            try:
+                await connection.send_bytes(bs)
+            except WebSocketDisconnect:
+                self.active_connections.remove(connection)
