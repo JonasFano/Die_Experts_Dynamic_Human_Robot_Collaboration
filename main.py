@@ -6,22 +6,32 @@ from utils.fixture_checker import CheckFixtures
 from utils.state_machine import StateMachine
 from utils.safety_monitor_prev import RobotSafetyMonitor
 
+
 def main():
     # Initialize parameters
     robot_ip = "192.168.1.100"
     safety_distance = 0.5
     home_q_deg = np.array([2.43, -130.48, 95.77, 304.95, 269.33, 261.24])
-    home_pose = np.array([-0.14066618616650417, -0.1347854199496408, 0.5007380032923527, -0.29084513888394903, 3.12302361256465, 0.021555350542996385])
+    home_pose = np.array(
+        [
+            -0.14066618616650417,
+            -0.1347854199496408,
+            0.5007380032923527,
+            -0.29084513888394903,
+            3.12302361256465,
+            0.021555350542996385,
+        ]
+    )
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(current_dir, 'images', 'reference.png')
+    image_path = os.path.join(current_dir, "images", "reference.png")
 
     # Define the patch coordinates (x, y, width, height) ------- x is horizontal and x,y are the top left pixel of the image patch
     patch_coords_list = [
-        (485, 345, 20, 15), # Component 1
-        (465, 365, 20, 15), # Component 2
-        (440, 395, 20, 15), # Component 3
-        (415, 420, 20, 15), # Component 4
+        (485, 345, 20, 15),  # Component 1
+        (465, 365, 20, 15),  # Component 2
+        (440, 395, 20, 15),  # Component 3
+        (415, 420, 20, 15),  # Component 4
     ]
 
     # Initialize components

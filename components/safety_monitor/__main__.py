@@ -14,10 +14,10 @@ while True:
 
     if choice == 1:
         from .safety_monitor import main
+
         main()
     if choice == 2:
         import uvicorn
         from .monitor import app
 
         uvicorn.run(app, host="0.0.0.0", port=8000)
-            

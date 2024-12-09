@@ -26,6 +26,13 @@
             "module": "safety_monitor.utils.fixture_checker"
         },
         {
+            "name": "Debug streaming-server",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/components",
+            "module": "safety_monitor.examples.streaming_images.streaming-server"
+        },
+        {
             "name": "Python Debugger: Client.py",
             "type": "debugpy",
             "request": "launch",

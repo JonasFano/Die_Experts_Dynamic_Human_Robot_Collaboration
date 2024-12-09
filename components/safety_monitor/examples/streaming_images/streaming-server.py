@@ -3,11 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import cv2
 from contextlib import asynccontextmanager
-
 import pathlib
 import os
-from safety_monitor.utils.connection_manager import ConnectionManager
+from sqlalchemy.
 
+from safety_monitor.utils.connection_manager import ConnectionManager
+from .database import Base
 
 manager = ConnectionManager()
 cap = None
@@ -18,6 +19,7 @@ image_thread = None
 async def lifespan(app: FastAPI):
     # Run at startup
     # print("Starting camera")
+
     while True:
         cap = cv2.VideoCapture(
             0, cv2.CAP_DSHOW
@@ -40,6 +42,7 @@ origins = [
     "http://localhost",
     "http://localhost:8000",
     "http://localhost:3000",
+    "http://localhost:*",
 ]
 
 app.add_middleware(
@@ -93,6 +96,39 @@ async def image_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
     except RuntimeError as e:
         print(e)
+
+
+@app.post("/settings/fixtures")
+def toggle_fixtures(enabled: bool):
+    datastore.update_variable(Variables.ShowFixture.value, str(enabled))
+    return {"updated_value": enabled}
+
+
+@app.get("/settings/fixtures")
+def fixtures_status():
+    return {"value": bool(datastore.read_variable(Variables.ShowFixture.value))}
+
+
+@app.post("/settings/text")
+def toggle_text(enabled: bool):
+    datastore.update_variable(Variables.ShowFixture.value, enabled)
+    return {"updated_value": enabled}
+
+
+@app.get("/settings/text")
+def text_status():
+    return {"value": bool(datastore.read_variable(Variables.ShowText.value))}
+
+
+@app.post("/settings/points")
+def toggle_points(enabled: bool):
+    datastore.update_variable(Variables.ShowPoints.value, enabled)
+    return {"updated_value": enabled}
+
+
+@app.get("/settings/points")
+def points_status():
+    return {"value": bool(datastore.read_variable(Variables.ShowPoints.value))}
 
 
 if __name__ == "__main__":
