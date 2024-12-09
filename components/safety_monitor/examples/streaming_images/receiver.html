@@ -11,7 +11,7 @@
     
     <script>
         const imageElement = document.getElementById('image');
-        const socket = new WebSocket('ws://localhost:8000/image');
+        const socket = new WebSocket('ws://localhost:8000/ws/image');
 
         // Set the WebSocket to receive binary data
         socket.binaryType = "blob";

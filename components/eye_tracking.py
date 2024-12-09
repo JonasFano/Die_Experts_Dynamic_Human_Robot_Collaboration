@@ -46,7 +46,7 @@ def is_looking_at_task(eye_points, frame):
     cv2.circle(frame, (screen_center_x, screen_center_y), 5, (255, 255, 255), -1)
 
     # Draw a rectangle for the task area
-    cv2.rectangle(frame, 
+    #cv2.rectangle(frame, 
               (screen_center_x - 50, screen_center_y - 50), 
               (screen_center_x + 50, screen_center_y + 50), 
               (255, 0, 0), 2)

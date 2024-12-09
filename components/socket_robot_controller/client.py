@@ -56,7 +56,8 @@ class RobotSocketClient:
         return self.sioc
 
     def is_running(self):
-        self.sioc.call(Events.IS_RUNNING.value)
+        """Check whether the robot is currently executing an async task"""
+        return self.sioc.call(Events.IS_RUNNING.value)
 
     def get_tcp_pose(self) -> List[float]:
         response = self.sioc.call(Events.GET_TCP_VALUE.value, timeout=5)
@@ -96,8 +97,9 @@ class RobotSocketClient:
     def moveL(
         self, target_pose: List[float], velocity: float = 0.2, acceleration: float = 0.3
     ):
+        print(Events.MOVE_L_SPEED_ACCEL.value)
         data = {
-            "position": target_pose.tolist(),
+            "position": list(target_pose),
             "speed": velocity,
             "acceleration": acceleration,
         }
@@ -105,5 +107,10 @@ class RobotSocketClient:
         response = self.sioc.call(Events.MOVE_L_SPEED_ACCEL.value, data)
         return response["positions"]
 
+
+
     def stop_robot(self):
         self.sioc.call(Events.STOP_ROBOT.value)
+    
+    def get_async_progress(self):
+        return self.sioc.call(Events.ASYNC_PROGRESS.value)

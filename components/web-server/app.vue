@@ -1,6 +1,50 @@
 <script setup lang="ts">
 import type { ChartDataset } from 'chart.js'
+import { DefaultApi } from "./rest-api/apis/DefaultApi.js"
+import { Configuration } from './rest-api/runtime.js';
 
+const config = new Configuration({basePath: "http://localhost:8000"})
+const defaultApi = new DefaultApi(config)
+
+const processImageStream = () => {
+  const imageElement = document.getElementById('image');
+  const socket = new WebSocket('ws://localhost:8000/ws/image');
+
+  // Set the WebSocket to receive binary data
+  socket.binaryType = "blob";
+
+  socket.onmessage = (event) => {
+      // Create a URL for the binary image data and set it as the source of the image
+      const blob = event.data; // Binary data (Blob)
+      const imageUrl = URL.createObjectURL(blob);
+      imageElement.src = imageUrl;
+
+      // Release the previous object URL to save memory
+      if (imageElement.dataset.previousUrl) {
+          URL.revokeObjectURL(imageElement.dataset.previousUrl);
+      }
+      imageElement.dataset.previousUrl = imageUrl;
+  };
+
+  socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+  };
+
+  socket.onclose = () => {
+      console.log("WebSocket connection closed");
+  };
+} 
+
+const toggleTextAPI = async (): Promise<undefined> => {
+  try {
+    let settings = await defaultApi.readUiSettingsRestUiSettingsGet();
+    settings.distanceText = !settings.distanceText
+    await defaultApi.updateRestUiSettingsPost({uISettingsCreate: settings})
+  } catch (err) {
+    console.log(err);
+  }
+
+} 
 
 //todo: replace url API endpoints
 const toggleText = () => {
@@ -53,6 +97,7 @@ const addGraphDataPoint = (data: number) => {
 
 onMounted(() => {
   setInterval(fetchData, 1000);
+  processImageStream()
 });
 
 const safetyDistance = ref(0);
@@ -77,12 +122,10 @@ const stressLevel = ref("N/A");
       <div class="flex flex-col md:flex-row gap-4 w-full pb-12 md:pb-4">
         <div class="p-4 w-full flex flex-col gap-2 shadow bg-white rounded">
           <h2 class="font-bold">Live camera feed</h2>
-          <video autoplay muted loop style="width: 100%; max-width: 640px; border: 1px solid black;">
-              <source src="http://localhost:8000/image" type="multipart/x-mixed-replace">
-          </video>
+          <img id="image" style="width: 100%; max-width: 1000px; border: 1px solid black;">
 
           <div class="flex gap-2">
-            <Button @click="toggleText" text="Toggle text" />
+            <Button @click="toggleTextAPI" text="Toggle text" />
             <Button @click="togglePoints" text="Toggle points" />
             <Button @click="toggleFixtures" text="Toggle fixtures" />
           </div>

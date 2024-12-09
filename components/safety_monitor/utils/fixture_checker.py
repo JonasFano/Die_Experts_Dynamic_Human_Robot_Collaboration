@@ -6,6 +6,14 @@ import os
 class CheckFixtures:
     def __init__(self, patch_coords_list, image_path, intensity_threshold=40, percentage_threshold=35, min_dist=1.2, max_dist=1.8):
         self.patch_coords_list = patch_coords_list
+        self.patch_coords_list = [ # TODO: Fix later
+                (335, 365, 20, 15), 
+                (295, 390, 20, 15), 
+                (260, 415, 20, 15), 
+                (225, 445, 20, 15),
+                (195, 500, 20, 15),
+                (160, 525, 20, 15),
+            ]
         self.reference_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         self.intensity_threshold = intensity_threshold # Pixel intensity difference threshold to detect significant changes.
         self.percentage_threshold = percentage_threshold # The minimum percentage of difference required to consider an object detected.
@@ -238,7 +246,7 @@ class CheckFixtures:
         # Color is BGR, and thickness is the border thickness (set to 2 here)
         image_with_patch = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)  # Convert to BGR to display color rectangle
 
-        cv2.rectangle(image_with_patch, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green rectangle on reference image
+        #cv2.rectangle(image_with_patch, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green rectangle on reference image
 
         cv2.imshow("Image with Patch", image_with_patch)
 
@@ -248,11 +256,12 @@ class CheckFixtures:
 
     def draw_patches(self, image):
         # Colors for each patch (you can customize the colors for each rectangle)
-        colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 255)]  # Green, Blue, Red, Yellow
+        colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 255), (0, 255, 0), (255, 0, 0),]  # Green, Blue, Red, Yellow
         # Draw rectangles for each patch
+        
         for i, patch_coords in enumerate(self.patch_coords_list):
             x, y, w, h = patch_coords
-            cv2.rectangle(image, (x, y), (x + w, y + h), colors[i], 2)
+            #cv2.rectangle(image, (x, y), (x + w, y + h), colors[i], 2)
 
     def visualize_all_patches(self, image):
         # Convert the grayscale image to BGR to display colored rectangles
@@ -329,7 +338,7 @@ def _main_realsense():
 
 
     current_file_path = pathlib.Path(__file__).parent.resolve()
-    reference_image_path = os.path.join(current_file_path, "images/reference2.png")
+    reference_image_path = os.path.join(current_file_path, "images/reference3.png")
     check_fixtures = CheckFixtures(patch_coords_list, reference_image_path, intensity_threshold=60)
 
 
@@ -349,10 +358,10 @@ def _main_realsense():
         reference_image = cv2.imread(reference_image_path, cv2.IMREAD_GRAYSCALE)  # Load reference image from camera or input
         cv2.imshow("Referemce Image", reference_image)
 
-        check_fixtures.debug_patches(gray_image, reference_image, patch_coords_list)
+        check_fixtures.debug_patches(gray_image, reference_image, check_fixtures.patch_coords_list)
 
         fixture_status = check_fixtures.check_all_patches(color_image, depth_image)
-        cv2.putText(gray_image, str(fixture_status), (100, 300),
+        cv2.putText(gray_image, str(fixture_status), (600, 100),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2, cv2.LINE_AA)
 
         #print(check_fixture½s.check_all_patches(color_image, depth_image))

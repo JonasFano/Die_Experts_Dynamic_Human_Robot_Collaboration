@@ -9,6 +9,8 @@ import httpx
 from PIL import Image
 import io
 import cv2
+import pathlib
+import os
 
 from .safety_monitor import SafetyMonitor
 from .utils.hrv_calculations import StressDetector
@@ -19,9 +21,11 @@ from .utils.jobs import (
     ImageStreamQueue,
 )
 from .utils.connection_manager import ConnectionManager
-
+from . import rest_api
+from .models import populate_db
 
 app = FastAPI()
+app.include_router(rest_api.router)
 
 origins = [
     "http://localhost",
@@ -47,6 +51,7 @@ SHOW_OVERLAY = True
 distance_manager = ConnectionManager()
 dummy_manager = ConnectionManager()
 fixture_manager = ConnectionManager()
+image_manager = ConnectionManager()
 
 # Safety monitor
 monitor = SafetyMonitor()
@@ -63,8 +68,10 @@ monitor_thread = threading.Thread(target=lambda: add_frames_to_queues(monitor))
 
 @app.on_event("startup")
 def startup():
+    populate_db()
     monitor.start()
     monitor_thread.start()
+    asyncio.create_task(generate_image_stream(image_manager, 60))
 
 
 #### Api endpoints
@@ -90,7 +97,8 @@ async def distance_respond_websocket(websocket: WebSocket):
     try:
         while True:
             await websocket.receive_text()
-            distance = DistanceQueue.get()
+            all_distances = DistanceQueue.all()
+            distance = sum(all_distances)/len(all_distances)
             await websocket.send_text(str(distance))
     except WebSocketDisconnect:
         websocket.disconnect()
@@ -98,15 +106,14 @@ async def distance_respond_websocket(websocket: WebSocket):
 
 @app.websocket("/fixtures")
 async def fixture_status_websocket(websocket: WebSocket):
-    manager = fixture_manager
-    await manager.connect(websocket)
+    await websocket.accept()
     try:
         while True:
-            await asyncio.sleep(0.01)
+            await websocket.receive_text()
             fixtures = FixtureStatusQueue.get()
-            await manager.broadcast(str(fixtures))
+            await websocket.send_text(str(fixtures))
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        websocket.disconnect(websocket)
 
 
 @app.websocket("/dummy")
@@ -133,9 +140,9 @@ async def serve_ui_data():
             print(f"Failed to get the heartrate. Error: {e}")
 
     if len(result) < 1:
-        result = random.randint(149, 150)
+        result = random.randint(60, 120)
     else:
-        result = result[0]["heartRate"]
+        result = int(result[0]["heartRate"])
 
     stress_status = stress_detector.add_heart_rate(result)
 
@@ -156,71 +163,71 @@ async def toggle_calibration():
     return JSONResponse({"calibrating": CALIBRATING})
 
 
-async def generate_image_stream(hz):
+async def generate_image_stream(manager, hz):
     # Create a NumPy array representing an image (RGB)
 
     while True:
         # Convert the NumPy array to an image
-        bgr_image = ImageStreamQueue.get()
-        rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
-        image = Image.fromarray(rgb_image)
-        # image_size = image.size
-        # resize_size = (int(image_size[0]/4), int(image_size[1]/4))
+        rgb_image = ImageStreamQueue.get()
+        if rgb_image is None:
+            print("No images in the queue yet.")
+            await manager.broadcast_bytes(await send_loading_image())
+            continue
+        
+        width = int(rgb_image.shape[0]/2)
+        height = int(rgb_image.shape[1]/2)
+        rgb_image = cv2.resize(rgb_image, (height, width))
+        _, buffer = cv2.imencode(".jpg", rgb_image)
 
-        # image = image.resize(resize_size, Image.Resampling.LANCZOS)
+        try:
+            # send binary frame data over websocket
+            await manager.broadcast_bytes(buffer.tobytes())
+        except Exception as e:
+            print(e)
 
-        # Save the image to a BytesIO stream
-        img_io = io.BytesIO()
-        image.save(img_io, format="PNG")
-        img_io.seek(0)
-
-        # Yield the image bytes
-        yield b"--frame\r\n"
-        yield b"Content-Type: image/png\r\n\r\n" + img_io.read() + b"\r\n"
+        # optional: reduce frame rate for streaming
 
         # Add a delay to control the frame rate (e.g., 1 frame per second)
         await asyncio.sleep(1 / hz)
 
+async def send_loading_image():
+    current_file_path = pathlib.Path(__file__).parent.resolve()
+    loading_image_path = os.path.join(current_file_path, "./images/loading.jpg")
 
-async def generate_frames2(hz):
-    while True:
-        SCALING = 0.5
-        bgr_image = ImageStreamQueue.get()
-        (height, width, depth) = bgr_image.shape
-        frame = cv2.resize(bgr_image, (int(width / SCALING), int(height / SCALING)))
-
-        # Encode the frame as JPEG
-        _, buffer = cv2.imencode(".jpg", frame)
-
-        # Yield the image bytes
-        yield buffer.tobytes()
-
-        # Limit frame rate (e.g., 30 FPS)
-        await asyncio.sleep(1 / hz)
+    with open(loading_image_path, "rb") as image:
+        return image.read()
 
 
 @app.get("/image")
 async def get_image():
-    return StreamingResponse(
-        generate_image_stream(20),
-        media_type="multipart/x-mixed-replace; boundary=frame",
-    )
+    frame = ImageStreamQueue.get()
+    if frame is None:
+        frame = cv2.imread("./images/loading.jpg", cv2.COLOR_BGR2RGB)
+    
+    success, encoded_image = cv2.imencode(".jpg", frame)
+
+    image_bytes = io.BytesIO(encoded_image.tobytes())
+    return StreamingResponse(image_bytes, media_type="image/jpeg")
 
 
 @app.websocket("/ws/image")
 async def websocket_endpoint(websocket: WebSocket):
     """Handle WebSocket connections and stream frames."""
-    await websocket.accept()  # Accept the connection
+    await image_manager.connect(websocket)  # Accept the connection
     try:
-        async for frame in generate_frames2(60):
-            # Send the encoded JPEG frame as binary data
-            await websocket.send_bytes(frame)
-    except Exception as e:
-        print(f"Connection closed: {e}")
-    finally:
-        await websocket.close()
+        await websocket.send_bytes(await send_loading_image())
+        while True:
+            await asyncio.sleep(10000)
+    except WebSocketDisconnect:
+        image_manager.disconnect(websocket)
+
 
 
 @app.get("/stress_level")
 async def get_safety():
     return {"stress_level": stress_detector.get_safetylevel()}
+
+
+@app.post("/settings/")
+def set_image_settings():
+    pass
