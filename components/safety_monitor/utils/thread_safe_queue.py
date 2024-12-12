@@ -1,7 +1,6 @@
 import threading
 from collections import deque
 
-
 class ThreadSafeQueue:
     def __init__(self, max_size=10):
         self.queue = deque(maxlen=max_size)
@@ -22,4 +21,6 @@ class ThreadSafeQueue:
     def clear(self):
         """Clears the queue."""
         with self.lock:
-            self.queue.clear()
+            self.queue.clear() 
+    def all(self):
+        return list(self.queue)

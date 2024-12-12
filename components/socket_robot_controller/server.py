@@ -8,6 +8,7 @@ from .events import Events  # Import the shared enum
 from typing import List
 import numpy as np
 from flask import Flask
+import time
 
 robot_enabled = True
 ROBOT_SPEED = 0.5
@@ -47,6 +48,12 @@ def is_running(sid) -> bool:
             return False
         else:
             return  True
+
+
+@sio.on(Events.ASYNC_PROGRESS.value)
+def async_progress(sid):
+    operation_prog = rtde_c.getAsyncOperationProgress()
+    return operation_prog
 
 
 @sio.on(Events.GET_TCP_VALUE.value)
@@ -121,7 +128,8 @@ def moveL(sid, data):
     if robot_enabled:
         if is_running(""):
             print("Stopping robot")
-            rtde_c.stopL()
+            rtde_c.stopL(a=1.0)
+            time.sleep(0.5)
         rtde_c.moveL(target_pose, speed=velocity, acceleration=acceleration, asynchronous=True)
     return {"positions": target_pose}
 

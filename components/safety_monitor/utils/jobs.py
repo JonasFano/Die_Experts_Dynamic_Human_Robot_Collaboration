@@ -5,11 +5,11 @@ import pathlib
 import os
 
 from .fixture_checker import CheckFixtures 
-from ..safety_monitor import SafetyFrameResults, SafetyMonitor, PATCH_COORDS_LIST
+from ..safety_monitor import SafetyFrameResults, SafetyMonitor
 from .thread_safe_queue import ThreadSafeQueue
 
 current_file_path = pathlib.Path(__file__).parent.resolve()
-reference_image_path = os.path.join(current_file_path, "images/reference2.png")
+reference_image_path = os.path.join(current_file_path, "images/reference3.png")
 
 patch_coords_list = [
         (339, 365, 20, 15), # Component 1
@@ -21,7 +21,7 @@ patch_coords_list = [
 fixture_checker = CheckFixtures(patch_coords_list, reference_image_path)
 
 FixtureStatusQueue = ThreadSafeQueue(2)
-DistanceQueue = ThreadSafeQueue(2)
+DistanceQueue = ThreadSafeQueue(5)
 ImageStreamQueue = ThreadSafeQueue(2)
 
 def add_frames_to_queues(m: SafetyMonitor, verbose: bool = False):
@@ -62,7 +62,7 @@ def add_frames_to_queues(m: SafetyMonitor, verbose: bool = False):
         except Exception as e:
             print(f"Raised in add_to_frames: {e}")
 
-        time.sleep(1/20)
+        time.sleep(1/60)
         
 def DistanceJob(m: SafetyMonitor, s: SafetyFrameResults, q) -> None:
     try:
@@ -72,7 +72,7 @@ def DistanceJob(m: SafetyMonitor, s: SafetyFrameResults, q) -> None:
         )
         q.put(distance)
     except Exception as e:
-        print(f"####################{e}")
+        print(f"#################### {e}")
 
 
 
@@ -81,7 +81,7 @@ def ImageStreamJob(m: SafetyMonitor, s: SafetyFrameResults, q) -> None:
     color_image = s.color_image.copy()
     poses = m.calculate_poses(color_image)
     color_image = m.apply_landmark_overlay(color_image, poses)
-    color_image = m.apply_some_graphic(s.color_image, PATCH_COORDS_LIST)
+    color_image = m.apply_some_graphic(s.color_image, fixture_checker.patch_coords_list)
     q.put(s.color_image)
 
 def get_queue(q, h: str):

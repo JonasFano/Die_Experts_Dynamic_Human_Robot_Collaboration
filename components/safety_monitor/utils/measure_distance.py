@@ -272,7 +272,7 @@ class RobotSafetyMonitor:
             # Draw rectangles for each patch
             for i, patch_coords in enumerate(patch_coords_list):
                 x, y, w, h = patch_coords
-                cv2.rectangle(color_image, (x, y), (x + w, y + h), colors[i], 2)
+                #cv2.rectangle(color_image, (x, y), (x + w, y + h), colors[i], 2)
 
 
         # Display the image

@@ -177,7 +177,6 @@ class SafetyMonitor:
         """Calculate the minimum distance between the human and the robot"""
         min_distance = float("inf")
 
-        saved_landmark = None
         actual_tcp_coords = self.get_tcp_coords()
         tcp_coords = calculate_camera_tcp_coords(actual_tcp_coords)
 
@@ -206,22 +205,14 @@ class SafetyMonitor:
 
                     cv2.putText(color_image, f"{id}: {distance:0.02f}", (cx, cy),
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,0), 2, cv2.LINE_AA)
-                    if (min_distance > distance):
-                        saved_landmark = (cx,cy)
                     min_distance = min(
                         min_distance, distance
                     )  # Track the minimum distance
 
-        print(f"Distance: {min_distance}")
-        if saved_landmark is not None:
-            tcp_pixel_coords = rs.rs2_project_point_to_pixel(depth_intrin, tcp_coords[:3])
-            tcp_x, tcp_y = int(tcp_pixel_coords[0]), int(tcp_pixel_coords[1])
-            cv2.line(color_image, saved_landmark, (tcp_x, tcp_y), (100,0,0), 2)
-
         return min_distance
 
     @staticmethod
-    def draw_tcp_on_image(tcp_coords, depth_intrin, color_image):
+    def _draw_tcp_on_image(tcp_coords, depth_intrin, color_image):
         """Draws the TCP on the image at the correct pixel coordinates."""
         tcp_pixel_coords = rs.rs2_project_point_to_pixel(depth_intrin, tcp_coords)
         tcp_x, tcp_y = int(tcp_pixel_coords[0]), int(tcp_pixel_coords[1])
@@ -231,7 +222,17 @@ class SafetyMonitor:
             cv2.circle(color_image, (tcp_x, tcp_y), 10, (0, 0, 255), -1)  # Red circle
             cv2.putText(color_image, "TCP", (tcp_x + 15, tcp_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
+    def draw_distance_on_screen(self, color_image, distance):
+        """Draw the distance on the screen in the top left corner"""
+        cv2.putText(color_image, f"Distance: {distance:0.02f}", (50, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,0), 2, cv2.LINE_AA)
 
+    def draw_tcp_on_frame(self, color_image, depth_frame):
+        """draw tcp on the color_image frame"""
+        tcp_coords = self.get_tcp_coords()
+        tcp_coords = calculate_camera_tcp_coords(tcp_coords)
+        depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
+        self._draw_tcp_on_image(tcp_coords[:3], depth_intrin, color_image)
 
     def calculate_poses(self, color_image: np.ndarray) -> NamedTuple:
         rgb_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
@@ -239,10 +240,10 @@ class SafetyMonitor:
             rgb_image
         )  # Used for creating pose overlay, calculating distance between human and robot
 
-    # TODO: What is this used for?
     def apply_some_graphic(
         self, color_image: np.ndarray, patch_coords_list: List[List[float]]
     ) -> None:
+        """Draw fixture patches on the screen."""
         height, width, _ = color_image.shape
 
         # Colors for each patch (you can customize the colors for each rectangle)
@@ -251,6 +252,8 @@ class SafetyMonitor:
             (255, 0, 0),
             (0, 0, 255),
             (255, 255, 0),
+            (124,124,0),
+            (0,124,124),
         ]  # Green, Blue, Red, Yellow
 
         # Draw rectangles for each patch
@@ -296,22 +299,6 @@ class SafetyMonitor:
 
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
-        
-        human_poses = self.calculate_poses(color_image)
-        
-        distance = self.calculate_human_robot_distance(human_poses, depth_frame, color_image)
-        color_image = self.apply_landmark_overlay(color_image, human_poses)
-
-
-
-        cv2.putText(color_image, f"Distance: {distance:0.02f}", (50, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,0), 2, cv2.LINE_AA)
-
-        tcp_coords = self.get_tcp_coords()
-        tcp_coords = calculate_camera_tcp_coords(tcp_coords)
-        depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
-        self.draw_tcp_on_image(tcp_coords[:3], depth_intrin, color_image)
-
 
         return SafetyFrameResults(color_frame, color_image, depth_frame, depth_image)
 

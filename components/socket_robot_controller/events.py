@@ -15,3 +15,4 @@ class Events(Enum):
     MOVE_TO_POSITION_L = "move_to_position_l"
     MOVE_TO_POSITION_J = "move_to_position_l"
     MOVE_L_SPEED_ACCEL = "move_l_SPEED_ACCEL"
+    ASYNC_PROGRESS = "async_progress"
