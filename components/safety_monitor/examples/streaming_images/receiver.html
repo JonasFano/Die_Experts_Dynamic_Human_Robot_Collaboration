@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Image Stream</title>
+</head>
+<body>
+    <h1>Binary Image Stream</h1>
+    <img id="image" alt="Streaming image will appear here" style="border:1px solid black;">
+    
+    <script>
+        const imageElement = document.getElementById('image');
+        const socket = new WebSocket('ws://localhost:8000/ws/image');
+
+        // Set the WebSocket to receive binary data
+        socket.binaryType = "blob";
+
+        socket.onmessage = (event) => {
+            // Create a URL for the binary image data and set it as the source of the image
+            const blob = event.data; // Binary data (Blob)
+            const imageUrl = URL.createObjectURL(blob);
+            imageElement.src = imageUrl;
+
+            // Release the previous object URL to save memory
+            if (imageElement.dataset.previousUrl) {
+                URL.revokeObjectURL(imageElement.dataset.previousUrl);
+            }
+            imageElement.dataset.previousUrl = imageUrl;
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+
+        socket.onclose = () => {
+            console.log("WebSocket connection closed");
+        };
+    </script>
+</body>
+</html>
